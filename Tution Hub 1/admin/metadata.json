@@ -1,0 +1,6 @@
+{
+  "name": "TuitionHub Center",
+  "description": "Tuition center management with student portal, attendance, fees, exams, timetable, and notice board.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
