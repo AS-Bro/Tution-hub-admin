@@ -3,6 +3,14 @@
    Integrates directly with Google Apps Script (code.gs) backend endpoint
    ========================================================================== */
 
+// GOOGLE SHEETS CONFIGURATION
+const GOOGLE_SHEETS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxwQ6DxfQYFTfraO5XtrLrT1IpsvRQv3jHlkmeDmLadMErSbfxJI2pQf_lLmlST8uA/exec";
+
+function getGasUrl() {
+  return GOOGLE_SHEETS_WEB_APP_URL || (STATE.settings && STATE.settings.gasUrl) || "";
+}
+window.getGoogleSheetsUrl = getGasUrl;
+
 function setSyncState(status) {
   STATE.syncStatus = status;
   const dot = $('#sync-dot'), txt = $('#sync-text');
@@ -13,7 +21,7 @@ function setSyncState(status) {
 }
 
 async function apiRequest(action, payload = {}) {
-  const url = STATE.settings.gasUrl;
+  const url = getGasUrl();
   if (!url) {
     setSyncState('offline');
     return null;
@@ -39,7 +47,7 @@ async function apiRequest(action, payload = {}) {
         return data;
       }
     }
-  } catch(e) {
+  } catch (e) {
     console.warn('POST sync attempt failed, trying GET fallback:', e);
   }
 
@@ -57,7 +65,7 @@ async function apiRequest(action, payload = {}) {
         return dataGet;
       }
     }
-  } catch(getErr) {
+  } catch (getErr) {
     console.warn('GET sync fallback failed:', getErr);
   }
 
@@ -67,7 +75,7 @@ async function apiRequest(action, payload = {}) {
 }
 
 async function fetchGoogleSheetsData() {
-  if (!STATE.settings.gasUrl) return;
+  if (!getGasUrl()) return;
   try {
     const res = await apiRequest('getInitialData');
     if (res) {
@@ -80,26 +88,40 @@ async function fetchGoogleSheetsData() {
         if (data.examMarks && typeof data.examMarks === 'object') { STATE.examMarks = data.examMarks; saveStorage(LS_KEYS.EXAM_MARKS, STATE.examMarks); }
         if (Array.isArray(data.notices)) { STATE.notices = data.notices; saveStorage(LS_KEYS.NOTICES, STATE.notices); }
         if (Array.isArray(data.schedule)) { STATE.schedule = data.schedule; saveStorage(LS_KEYS.SCHEDULE, STATE.schedule); }
-        if (data.settings && typeof data.settings === 'object' && Object.keys(data.settings).length > 0) { 
-          STATE.settings = Object.assign({}, STATE.settings, data.settings); 
+        if (data.settings && typeof data.settings === 'object' && Object.keys(data.settings).length > 0) {
+          // Deep-merge settings to avoid overwriting nested preference objects like appearance
+          STATE.settings = Object.assign({}, STATE.settings, data.settings, {
+            appearance: Object.assign({}, STATE.settings.appearance || {}, data.settings.appearance || {}),
+            receiptSettings: Object.assign({}, STATE.settings.receiptSettings || {}, data.settings.receiptSettings || {}),
+            whatsappTemplates: Object.assign({}, STATE.settings.whatsappTemplates || {}, data.settings.whatsappTemplates || {}),
+            dashboardWidgets: Object.assign({}, STATE.settings.dashboardWidgets || {}, data.settings.dashboardWidgets || {}),
+            academicSettings: Object.assign({}, STATE.settings.academicSettings || {}, data.settings.academicSettings || {})
+          });
           saveStorage(LS_KEYS.SETTINGS, STATE.settings);
+          // Re-apply theme and appearance so UI remains consistent after sync
+          try {
+            const themeToApply = (STATE.settings.appearance && STATE.settings.appearance.theme) || STATE.theme || 'light';
+            applyTheme(themeToApply);
+            applyAppearanceSettings();
+          } catch (err) { /* ignore if functions not available yet */ }
         }
         showToast('success', 'Google Sheets data synced successfully');
         if (window.onSyncComplete) window.onSyncComplete();
       }
     }
-  } catch(e) {
+  } catch (e) {
     console.warn('Initial sync error:', e);
   }
 }
 
-window.triggerGoogleSheetsSync = function() {
+window.apiRequest = apiRequest;
+window.triggerGoogleSheetsSync = function () {
   fetchGoogleSheetsData();
 };
 
 /* Auto-sync on page load if GAS URL is configured */
 document.addEventListener('DOMContentLoaded', () => {
-  if (STATE.settings.gasUrl) {
+  if (getGasUrl()) {
     fetchGoogleSheetsData();
   }
 });

@@ -212,7 +212,14 @@ function bindFeeEvents() {
 
   $all('.fee-remind-wa-btn').forEach(btn => {
     btn.onclick = () => {
-      const msg = `Dear Parent, gentle reminder that tuition fee for ${btn.dataset.name} for the month of ${feeState.month} (${formatCurrency(btn.dataset.fee)}) is pending. Kindly clear the dues at your earliest convenience. Thank you - ${STATE.settings.tuitionName || 'Tuition Center'}`;
+      const tpl = (STATE.settings.whatsappTemplates && STATE.settings.whatsappTemplates.feeReminder)
+        || 'Dear Parent, gentle reminder that tuition fee for {studentName} for the month of {date} ({amount}) is pending. Kindly clear the dues at your earliest convenience. Thank you - {centerName}';
+      const msg = formatMessageTemplate ? formatMessageTemplate(tpl, {
+        studentName: btn.dataset.name,
+        amount: formatCurrency(btn.dataset.fee),
+        date: feeState.month,
+        centerName: STATE.settings.tuitionName || 'Tuition Center'
+      }) : tpl;
       openWhatsApp(btn.dataset.phone, msg);
     };
   });
@@ -261,11 +268,22 @@ function openPaymentModal(student = null) {
     </form>
     <div class="modal-footer">
       <button class="btn btn-outline" data-modal-close>Cancel</button>
-      <button class="btn btn-primary" id="save-fee-modal-btn">Record Payment & Download Receipt</button>
+      <button class="btn btn-primary" id="save-fee-modal-btn">Record Payment</button>
     </div>
   `;
 
   const { overlay, close } = ModalManager.open(html);
+
+  const studentSelect = $('#fm-student-id', overlay);
+  if (studentSelect) {
+    studentSelect.onchange = (e) => {
+      const selected = STATE.students.find(s => s.studentId === e.target.value);
+      if (selected && selected.monthlyFee) {
+        const amtInput = $('#fm-amount', overlay);
+        if (amtInput) amtInput.value = selected.monthlyFee;
+      }
+    };
+  }
 
   const saveBtn = $('#save-fee-modal-btn', overlay);
   saveBtn.onclick = async () => {
@@ -275,6 +293,19 @@ function openPaymentModal(student = null) {
     const amount = Number($('#fm-amount', overlay).value) || 0;
     const date = $('#fm-date', overlay).value;
     const mode = $('#fm-mode', overlay).value;
+
+    if (!studentId || !stObj) {
+      showToast('error', 'Please select a valid student');
+      return;
+    }
+    if (!month) {
+      showToast('error', 'Please enter fee month');
+      return;
+    }
+    if (amount <= 0) {
+      showToast('error', 'Please enter a valid payment amount');
+      return;
+    }
 
     const record = {
       id: uid(),
@@ -294,13 +325,7 @@ function openPaymentModal(student = null) {
 
     saveStorage(LS_KEYS.FEES, STATE.fees);
     showToast('success', 'Fee payment recorded successfully');
-    close();
     renderFeesPage();
-
-    /* Download Receipt PDF */
-    if (stObj) {
-      generateFeeReceiptPDF(stObj, amount, month);
-    }
 
     if (STATE.settings.gasUrl && window.apiRequest) {
       try {
@@ -308,6 +333,43 @@ function openPaymentModal(student = null) {
       } catch (e) {
         showToast('warning', 'Saved locally, but Google Sheets sync failed');
       }
+    }
+
+    /* Show success state in modal with Download Receipt option */
+    const modalBox = overlay.querySelector('.modal-box');
+    if (modalBox) {
+      modalBox.innerHTML = `
+        <div class="modal-header">
+          <h3>Payment Recorded</h3>
+          <button class="icon-btn" data-modal-close><i data-lucide="x" class="icon"></i></button>
+        </div>
+        <div class="modal-body" style="text-align:center;padding:32px 24px;display:flex;flex-direction:column;align-items:center;gap:12px;">
+          <div style="width:56px;height:56px;border-radius:50%;background:var(--success-light);color:var(--success);display:flex;align-items:center;justify-content:center;">
+            <i data-lucide="check" style="width:32px;height:32px"></i>
+          </div>
+          <h4 style="font-size:18px;font-family:'Poppins',sans-serif;margin:0;color:var(--text)">✓ Payment Recorded Successfully</h4>
+          <p style="color:var(--text-secondary);font-size:14px;margin:0;max-width:360px">
+            Payment of <strong>${formatCurrency(amount)}</strong> for <strong>${escapeHtml(stObj.studentName)}</strong> (${escapeHtml(month)}) has been saved.
+          </p>
+        </div>
+        <div class="modal-footer" style="justify-content:space-between">
+          <button class="btn btn-outline" data-modal-close>Close</button>
+          <button class="btn btn-primary" id="download-receipt-modal-btn">
+            <i data-lucide="download" class="icon"></i> Download Receipt
+          </button>
+        </div>
+      `;
+      if (window.lucide) lucide.createIcons();
+      modalBox.querySelectorAll('[data-modal-close]').forEach(b => b.onclick = close);
+
+      const dlBtn = $('#download-receipt-modal-btn', modalBox);
+      if (dlBtn) {
+        dlBtn.onclick = () => {
+          generateFeeReceiptPDF(stObj, amount, month);
+        };
+      }
+    } else {
+      close();
     }
   };
 }
@@ -318,7 +380,15 @@ function generateFeeReceiptPDF(student, amount, month) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
     const s = STATE.settings;
-    const receiptNo = 'REC-' + Math.floor(100000 + Math.random() * 900000);
+    const rec = (s && s.receiptSettings) || {};
+    const receiptPrefix = rec.prefix || s.receiptPrefix || 'REC-';
+    const receiptTitle = rec.title || 'FEE PAYMENT RECEIPT';
+    const receiptFooter = rec.footerMessage || 'Thank you for your payment!';
+    const showLogo = rec.showLogo !== false;
+    const showStudentId = rec.showStudentId !== false;
+    const showParentDetails = rec.showParentDetails !== false;
+    const showPaymentDate = rec.showPaymentDate !== false;
+    const receiptNo = receiptPrefix + Math.floor(100000 + Math.random() * 900000);
 
     doc.setFillColor(37, 99, 235);
     doc.rect(0, 0, 148, 18, 'F');
@@ -327,7 +397,7 @@ function generateFeeReceiptPDF(student, amount, month) {
     doc.setFontSize(14);
     doc.text(s.tuitionName || 'Tuition Center', 12, 12);
 
-    if (s.logoUrl && s.logoUrl.startsWith('data:image/')) {
+    if (showLogo && s.logoUrl && s.logoUrl.startsWith('data:image/')) {
       try {
         const format = s.logoUrl.includes('png') ? 'PNG' : 'JPEG';
         doc.addImage(s.logoUrl, format, 115, 2, 22, 14);
@@ -336,34 +406,46 @@ function generateFeeReceiptPDF(student, amount, month) {
 
     doc.setTextColor(17, 24, 39);
     doc.setFontSize(16);
-    doc.text("FEE PAYMENT RECEIPT", 12, 32);
+    doc.text(receiptTitle, 12, 32);
 
     doc.setFontSize(9); doc.setTextColor(107, 114, 128);
     doc.text(`Receipt No: ${receiptNo}`, 12, 40);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, 12, 45);
+    if (showPaymentDate) {
+      doc.text(`Date: ${new Date().toLocaleDateString()}`, 12, 45);
+    }
 
     doc.setFillColor(248, 250, 252);
     doc.roundedRect(12, 52, 124, 45, 2, 2, 'F');
 
+    let yPos = 60;
     doc.setFont('helvetica', 'bold'); doc.setTextColor(107, 114, 128);
-    doc.text("Student ID:", 16, 60); doc.text("Student Name:", 16, 68);
-    doc.text("Batch:", 16, 76); doc.text("For Month:", 16, 84);
+    if (showStudentId) { doc.text('Student ID:', 16, yPos); }
+    doc.text('Student Name:', 16, showStudentId ? yPos + 8 : yPos);
+    doc.text('Batch:', 16, showStudentId ? yPos + 16 : yPos + 8);
+    doc.text('For Month:', 16, showStudentId ? yPos + 24 : yPos + 16);
 
     doc.setTextColor(17, 24, 39);
-    doc.text(student.studentId, 48, 60);
-    doc.text(student.studentName, 48, 68);
-    doc.text(student.batch || '—', 48, 76);
-    doc.text(month || 'Current Month', 48, 84);
+    if (showStudentId) { doc.text(student.studentId || '', 56, yPos); }
+    doc.text(student.studentName || '', 56, showStudentId ? yPos + 8 : yPos);
+    doc.text(student.batch || '—', 56, showStudentId ? yPos + 16 : yPos + 8);
+    doc.text(month || 'Current Month', 56, showStudentId ? yPos + 24 : yPos + 16);
+
+    if (showParentDetails && student.parentName) {
+      doc.setTextColor(107, 114, 128);
+      doc.setFontSize(8);
+      doc.text('Parent: ' + student.parentName, 16, 100);
+      if (student.phone) doc.text('Contact: ' + student.phone, 16, 104);
+    }
 
     doc.setFillColor(236, 253, 245);
-    doc.roundedRect(12, 103, 124, 20, 2, 2, 'F');
+    doc.roundedRect(12, 108, 124, 20, 2, 2, 'F');
     doc.setFontSize(12); doc.setTextColor(16, 185, 129);
-    doc.text("Amount Paid:", 16, 116);
+    doc.text('Amount Paid:', 16, 121);
     doc.setFontSize(14);
-    doc.text(formatCurrency(amount), 80, 116);
+    doc.text(formatCurrency(amount), 80, 121);
 
     doc.setFontSize(8); doc.setTextColor(156, 163, 175);
-    doc.text("Thank you for your payment!", 12, 138);
+    doc.text(receiptFooter, 12, 140);
 
     triggerPdfDownload(doc, `receipt_${student.studentId}_${receiptNo}.pdf`);
   } catch (e) {

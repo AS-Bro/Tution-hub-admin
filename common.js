@@ -23,20 +23,90 @@ const DEFAULT_SETTINGS = {
   teacherName: 'Prof. Sharma',
   currency: '₹',
   dateFormat: 'DD/MM/YYYY',
-  defaultBatch: 'Class ',
+  defaultBatch: 'Grade 10',
   defaultMonthlyFee: 1000,
   idPrefix: 'ST',
+  startingId: 1001,
+  availableBatches: ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'],
+  feeDueDay: 5,
+  lateFee: 0,
+  receiptPrefix: 'REC-',
+  email: 'contact@tuitionhub.edu',
+  address: '123 Education Hub, Knowledge Park',
+  website: '',
+  footerText: 'Empowering students with quality guidance & tuition.',
   connected: false,
   lastSync: null,
   liveClassLink: 'https://meet.google.com',
-  teacherPhone: '**********',
-  teacherWhatsapp: '**********'
+  teacherPhone: '9876543210',
+  teacherWhatsapp: '9876543210',
+
+  // Customization preferences
+  appearance: {
+    theme: 'light', // 'light' | 'dark' | 'system'
+    accentColor: '#2563EB',
+    presetTheme: 'blue',
+    density: 'comfortable' // 'comfortable' | 'compact'
+  },
+  receiptSettings: {
+    title: 'FEE PAYMENT RECEIPT',
+    footerMessage: 'Thank you for your payment!',
+    showLogo: true,
+    showStudentId: true,
+    showParentDetails: true,
+    showPaymentDate: true,
+    prefix: 'REC-'
+  },
+  whatsappTemplates: {
+    absent: 'Dear Parent, your child {studentName} was marked ABSENT for tuition on {date}. Please inform us if there is an issue. - {centerName}',
+    feeReminder: 'Dear Parent, gentle reminder that tuition fee for {studentName} for the month of {date} ({amount}) is pending. Kindly clear the dues at your earliest convenience. Thank you - {centerName}',
+    paymentConfirmation: 'Dear Parent, fee payment of {amount} for {studentName} for the month of {date} has been successfully received. Thank you - {centerName}'
+  },
+  dashboardWidgets: {
+    studentCount: true,
+    attendanceStats: true,
+    feeStats: true,
+    pendingFees: true,
+    recentExams: true,
+    timetable: true,
+    notices: true
+  },
+  academicSettings: {
+    academicYear: '2026-2027',
+    workingDays: 'Mon, Tue, Wed, Thu, Fri, Sat',
+    weekStart: 'Monday',
+    holidays: 'National & State Public Holidays'
+  }
 };
 
 const DEFAULT_SCHEDULE = [
-  { id: 'sc1', subject: 'Mathematics', batch: 'Grade 10', time: '04:00 PM - 05:30 PM', days: 'Mon, Wed, Fri', teacher: 'Prof. Sharma', room: 'Room 101' },
-  { id: 'sc2', subject: 'Physics & Science', batch: 'Grade 10', time: '05:30 PM - 07:00 PM', days: 'Mon, Wed, Fri', teacher: 'Dr. Verma', room: 'Lab A' },
-  { id: 'sc3', subject: 'Chemistry', batch: 'Grade 12', time: '04:00 PM - 05:30 PM', days: 'Tue, Thu, Sat', teacher: 'Mrs. Anita', room: 'Room 202' }
+  { 
+    id: 'sc1', 
+    subject: 'Mathematics', 
+    batch: 'Grade 10', 
+    time: '04:00 PM - 05:30 PM', 
+    days: 'Mon, Wed, Fri', 
+    teacher: 'Prof. Sharma', 
+    room: 'https://meet.google.com/abc-defg-hij'
+  },
+  { 
+    id: 'sc2', 
+    subject: 'Physics & Science', 
+    batch: 'Grade 10', 
+    time: '05:30 PM - 07:00 PM', 
+    days: 'Mon, Wed, Fri', 
+    teacher: 'Dr. Verma', 
+    room: 'https://zoom.us/physics-class'
+  },
+  { 
+    id: 'sc3', 
+    subject: 'Chemistry', 
+    batch: 'Grade 12', 
+    time: '04:00 PM - 05:30 PM', 
+    days: 'Tue, Thu, Sat', 
+    teacher: 'Mrs. Anita', 
+    room: ''
+  }
 ];
 
 const DEFAULT_NOTICES = [
@@ -52,6 +122,26 @@ const DEFAULT_STUDENTS = [
   { studentId: 'ST-1001', studentName: 'Demo Student', batch: 'Grade 10', phone: '**********', parentName: 'Demo Parent', monthlyFee: 1000, status: 'Active', joiningDate: '2026-01-10', password: 'Pass123' }
 ];
 
+function loadStorage(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (key === LS_KEYS.SETTINGS && typeof parsed === 'object' && parsed !== null) {
+        return Object.assign({}, fallback, parsed, {
+          appearance: Object.assign({}, fallback.appearance, parsed.appearance || {}),
+          receiptSettings: Object.assign({}, fallback.receiptSettings, parsed.receiptSettings || {}),
+          whatsappTemplates: Object.assign({}, fallback.whatsappTemplates, parsed.whatsappTemplates || {}),
+          dashboardWidgets: Object.assign({}, fallback.dashboardWidgets, parsed.dashboardWidgets || {}),
+          academicSettings: Object.assign({}, fallback.academicSettings, parsed.academicSettings || {})
+        });
+      }
+      return parsed;
+    }
+  } catch (e) { }
+  return fallback;
+}
+
 const STATE = {
   settings: loadStorage(LS_KEYS.SETTINGS, DEFAULT_SETTINGS),
   schedule: loadStorage(LS_KEYS.SCHEDULE, DEFAULT_SCHEDULE),
@@ -64,14 +154,6 @@ const STATE = {
   syncStatus: 'offline',
   theme: localStorage.getItem(LS_KEYS.THEME) || 'light'
 };
-
-function loadStorage(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw) return JSON.parse(raw);
-  } catch (e) { }
-  return fallback;
-}
 
 function saveStorage(key, data) {
   try { localStorage.setItem(key, JSON.stringify(data)); } catch (e) { }
@@ -125,16 +207,57 @@ function formatCurrency(n) {
 
 function uid() { return 'x' + Math.random().toString(36).slice(2, 10); }
 
-/* Theme Management */
+/* Theme & Appearance Management */
 function applyTheme(theme) {
+  let effectiveTheme = theme;
+  if (theme === 'system') {
+    effectiveTheme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
   STATE.theme = theme;
-  document.documentElement.setAttribute('data-theme', theme);
+  document.documentElement.setAttribute('data-theme', effectiveTheme);
   localStorage.setItem(LS_KEYS.THEME, theme);
   const themeIcon = $('#theme-icon');
   if (themeIcon) {
-    themeIcon.setAttribute('data-lucide', theme === 'dark' ? 'sun' : 'moon');
+    themeIcon.setAttribute('data-lucide', effectiveTheme === 'dark' ? 'sun' : 'moon');
     if (window.lucide) lucide.createIcons();
   }
+  applyAppearanceSettings();
+}
+
+function applyAppearanceSettings() {
+  const app = (STATE.settings && STATE.settings.appearance) || {};
+  const root = document.documentElement;
+
+  if (app.accentColor) {
+    root.style.setProperty('--primary', app.accentColor);
+    root.style.setProperty('--primary-dark', app.accentColor);
+  } else {
+    root.style.removeProperty('--primary');
+    root.style.removeProperty('--primary-dark');
+  }
+
+  if (app.density === 'compact') {
+    document.body.classList.add('density-compact');
+  } else {
+    document.body.classList.remove('density-compact');
+  }
+}
+
+/* System Theme Listener */
+if (window.matchMedia) {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (STATE.theme === 'system' || (STATE.settings.appearance && STATE.settings.appearance.theme === 'system')) {
+      applyTheme('system');
+    }
+  });
+}
+
+/* Template Formatter */
+function formatMessageTemplate(template, vars = {}) {
+  if (!template) return '';
+  return template.replace(/\{(\w+)}/g, (match, key) => {
+    return vars[key] !== undefined && vars[key] !== null ? vars[key] : match;
+  });
 }
 
 /* Toast Notification Manager */
@@ -271,7 +394,8 @@ function injectShellLayout(activePageKey, pageTitle) {
     </nav>
   `;
 
-  applyTheme(STATE.theme);
+  const currentTheme = (STATE.settings && STATE.settings.appearance && STATE.settings.appearance.theme) || STATE.theme || 'light';
+  applyTheme(currentTheme);
   bindShellEvents();
 }
 
@@ -300,13 +424,16 @@ function bindShellEvents() {
     };
   }
 
-  const themeBtn = $('#theme-toggle-btn');
-  if (themeBtn) {
-    themeBtn.onclick = () => {
-      const nextTheme = STATE.theme === 'dark' ? 'light' : 'dark';
-      applyTheme(nextTheme);
-    };
-  }
+   const themeBtn = $('#theme-toggle-btn');
+   if (themeBtn) {
+     themeBtn.onclick = () => {
+       const nextTheme = STATE.theme === 'dark' ? 'light' : 'dark';
+       if (!STATE.settings.appearance) STATE.settings.appearance = {};
+       STATE.settings.appearance.theme = nextTheme;
+       saveStorage(LS_KEYS.SETTINGS, STATE.settings);
+       applyTheme(nextTheme);
+     };
+   }
 
   const refreshBtn = $('#refresh-btn');
   if (refreshBtn) {
@@ -344,6 +471,7 @@ function openWhatsApp(phone, message) {
   const url = `https://wa.me/${cleanPhone}?text=${encodedMsg}`;
   window.open(url, '_blank');
 }
+
 
 /* Compute stats for a student */
 function computeStudentStats(studentId) {

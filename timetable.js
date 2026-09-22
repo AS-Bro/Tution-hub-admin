@@ -1,15 +1,16 @@
 /* ==========================================================================
-   TuitionHub — Timetable & Schedule Script (timetable.js)
-   ========================================================================== */
+    TuitionHub — Timetable & Schedule Script (timetable.js)
+    Simplified: Uses existing 'room' column for online class URLs
+    ========================================================================== */
 
 let timetableBatchFilter = '';
 
 document.addEventListener('DOMContentLoaded', () => {
-  injectShellLayout('timetable', 'Schedule & Timetable');
+  injectShellLayout('timetable', 'Class & Timetable');
   renderTimetablePage();
 });
 
-window.onSyncComplete = function() {
+window.onSyncComplete = function () {
   renderTimetablePage();
 };
 
@@ -23,18 +24,16 @@ function renderTimetablePage() {
     return !timetableBatchFilter || sc.batch === timetableBatchFilter;
   });
 
-  const liveClassUrl = STATE.settings.liveClassLink || 'https://meet.google.com';
-
   container.innerHTML = `
     <div class="section-head">
       <div>
         <h2>Class Timetable & Slot Matrix</h2>
-        <div class="section-sub">Organize batch timings, subjects, rooms, and online classes</div>
+        <div class="section-sub">Organize batch timings, subjects, online classes, and schedule</div>
       </div>
       <div style="display:flex;gap:10px">
-        <a href="${escapeHtml(liveClassUrl)}" target="_blank" class="btn btn-secondary btn-sm">
+        <button class="btn btn-secondary btn-sm" id="launch-online-class-btn">
           <i data-lucide="video" class="icon"></i> Launch Online Class
-        </a>
+        </button>
         <button class="btn btn-primary btn-sm" id="add-slot-btn">
           <i data-lucide="plus" class="icon"></i> Add Time Slot
         </button>
@@ -62,35 +61,40 @@ function renderTimetablePage() {
       </div>
     ` : `
       <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:16px">
-        ${filtered.map(sc => `
-          <div class="card" style="display:flex;flex-direction:column;gap:12px;position:relative">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start">
-              <div>
-                <span class="badge badge-blue">${escapeHtml(sc.batch)}</span>
-                <h3 style="font-size:18px;margin-top:6px">${escapeHtml(sc.subject)}</h3>
+        ${filtered.map(sc => {
+          const hasUrl = sc.room && sc.room.startsWith('http');
+          return `
+            <div class="card" style="display:flex;flex-direction:column;gap:12px;position:relative">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                <div>
+                  <span class="badge badge-blue">${escapeHtml(sc.batch)}</span>
+                  <h3 style="font-size:18px;margin-top:6px">${escapeHtml(sc.subject)}</h3>
+                </div>
+                <div style="display:flex;gap:4px">
+                  <button class="icon-btn duplicate-slot-btn" data-id="${escapeHtml(sc.id)}" title="Duplicate Slot"><i data-lucide="copy" class="icon"></i></button>
+                  <button class="icon-btn edit-slot-btn" data-id="${escapeHtml(sc.id)}" title="Edit Slot"><i data-lucide="edit-2" class="icon"></i></button>
+                  <button class="icon-btn delete-slot-btn" data-id="${escapeHtml(sc.id)}" title="Delete Slot"><i data-lucide="trash-2" class="icon" style="color:var(--danger)"></i></button>
+                </div>
               </div>
-              <div style="display:flex;gap:4px">
-                <button class="icon-btn edit-slot-btn" data-id="${escapeHtml(sc.id)}" title="Edit Slot"><i data-lucide="edit-2" class="icon"></i></button>
-                <button class="icon-btn delete-slot-btn" data-id="${escapeHtml(sc.id)}" title="Delete Slot"><i data-lucide="trash-2" class="icon" style="color:var(--danger)"></i></button>
-              </div>
-            </div>
 
-            <div style="display:flex;flex-direction:column;gap:6px;font-size:13.5px">
-              <div style="display:flex;align-items:center;gap:8px;color:var(--primary);font-weight:700">
-                <i data-lucide="clock" class="icon"></i> ${escapeHtml(sc.time)}
-              </div>
-              <div style="display:flex;align-items:center;gap:8px;color:var(--text-secondary)">
-                <i data-lucide="calendar" class="icon"></i> Days: ${escapeHtml(sc.days)}
-              </div>
-              <div style="display:flex;align-items:center;gap:8px;color:var(--text-secondary)">
-                <i data-lucide="user" class="icon"></i> Tutor: ${escapeHtml(sc.teacher || 'Primary Teacher')}
-              </div>
-              <div style="display:flex;align-items:center;gap:8px;color:var(--text-secondary)">
-                <i data-lucide="map-pin" class="icon"></i> Room: ${escapeHtml(sc.room || 'Main Hall')}
+              <div style="display:flex;flex-direction:column;gap:6px;font-size:13.5px">
+                <div style="display:flex;align-items:center;gap:8px;color:var(--primary);font-weight:700">
+                  <i data-lucide="clock" class="icon"></i> ${escapeHtml(sc.time)}
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;color:var(--text-secondary)">
+                  <i data-lucide="calendar" class="icon"></i> Days: ${escapeHtml(sc.days)}
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;color:var(--text-secondary)">
+                  <i data-lucide="user" class="icon"></i> Tutor: ${escapeHtml(sc.teacher || 'Primary Teacher')}
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;${hasUrl ? 'color:var(--primary);font-weight:600;cursor:pointer' : 'color:var(--text-secondary)'}">
+                  <i data-lucide="${hasUrl ? 'video' : 'info'}" class="icon"></i> 
+                  ${hasUrl ? `<span class="open-url-btn" data-url="${escapeHtml(sc.room)}" title="Click to open online class">Online Class Available</span>` : 'No online class link'}
+                </div>
               </div>
             </div>
-          </div>
-        `).join('')}
+          `;
+        }).join('')}
       </div>
     `}
   `;
@@ -108,8 +112,20 @@ function bindTimetableEvents() {
     };
   }
 
+  const launchBtn = $('#launch-online-class-btn');
+  if (launchBtn) {
+    launchBtn.onclick = () => launchFirstAvailableLink();
+  }
+
   const addBtn = $('#add-slot-btn') || $('#empty-slot-btn');
   if (addBtn) addBtn.onclick = () => openSlotModal();
+
+  $all('.duplicate-slot-btn').forEach(btn => {
+    btn.onclick = () => {
+      const slot = STATE.schedule.find(s => s.id === btn.dataset.id);
+      if (slot) duplicateSlot(slot);
+    };
+  });
 
   $all('.edit-slot-btn').forEach(btn => {
     btn.onclick = () => {
@@ -128,10 +144,19 @@ function bindTimetableEvents() {
         if (STATE.settings.gasUrl && window.apiRequest) {
           try {
             await window.apiRequest('saveSchedule', { schedule: STATE.schedule });
-          } catch(e) {
+          } catch (e) {
             showToast('warning', 'Deleted locally, but Google Sheets sync failed');
           }
         }
+      }
+    };
+  });
+
+  $all('.open-url-btn').forEach(btn => {
+    btn.onclick = () => {
+      const url = btn.dataset.url;
+      if (url && url.startsWith('http')) {
+        window.open(url, '_blank');
       }
     };
   });
@@ -141,11 +166,43 @@ function bindTimetableEvents() {
     broadcastBtn.onclick = () => {
       let msg = `📅 *Tuition Class Timetable (${STATE.settings.tuitionName || 'Tuition Center'})*\n\n`;
       STATE.schedule.forEach(sc => {
-        msg += `• *${sc.subject}* (${sc.batch})\n  ⏰ ${sc.time} | 🗓️ ${sc.days}\n  👨‍🏫 ${sc.teacher || 'Tutor'} | 📍 ${sc.room || 'Classroom'}\n\n`;
+        msg += `• *${sc.subject}* (${sc.batch})\n  ⏰ ${sc.time} | 🗓️ ${sc.days}\n  👨‍🏫 ${sc.teacher || 'Tutor'}\n`;
+        if (sc.room && sc.room.startsWith('http')) {
+          msg += `  🎥 Online Class Available\n`;
+        }
+        msg += '\n';
       });
       openWhatsApp(STATE.settings.teacherWhatsapp || STATE.settings.teacherPhone, msg);
     };
   }
+}
+
+function duplicateSlot(slot) {
+  const newSlot = {
+    ...slot,
+    id: uid()
+  };
+  STATE.schedule.push(newSlot);
+  saveStorage(LS_KEYS.SCHEDULE, STATE.schedule);
+  showToast('success', 'Slot duplicated');
+  renderTimetablePage();
+  if (STATE.settings.gasUrl && window.apiRequest) {
+    window.apiRequest('saveSchedule', { schedule: STATE.schedule }).catch(() => {
+      showToast('warning', 'Duplicated locally, but Google Sheets sync failed');
+    });
+  }
+}
+
+function launchFirstAvailableLink() {
+  const slotsWithLinks = STATE.schedule.filter(s => s.room && s.room.startsWith('http'));
+  
+  if (slotsWithLinks.length === 0) {
+    showToast('info', 'No online class links configured yet');
+    return;
+  }
+
+  const firstLink = slotsWithLinks[0].room;
+  window.open(firstLink, '_blank');
 }
 
 function openSlotModal(slot = null) {
@@ -187,8 +244,9 @@ function openSlotModal(slot = null) {
           <input type="text" id="sm-teacher" value="${escapeHtml(slot ? slot.teacher : STATE.settings.teacherName || '')}" placeholder="Tutor Name">
         </div>
         <div class="form-row">
-          <label>Classroom / Lab</label>
-          <input type="text" id="sm-room" value="${escapeHtml(slot ? slot.room : 'Room 101')}" placeholder="Room 101">
+          <label>Online Class URL</label>
+          <input type="url" id="sm-room" value="${escapeHtml(slot ? slot.room : '')}" placeholder="https://meet.google.com/..." title="HTTPS URL for meeting link (optional)">
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">Optional. Enter meeting URL (Google Meet, Zoom, Teams, etc)</div>
         </div>
       </div>
     </form>
@@ -209,7 +267,15 @@ function openSlotModal(slot = null) {
     const teacher = $('#sm-teacher', overlay).value.trim();
     const room = $('#sm-room', overlay).value.trim();
 
-    if (!subject || !batch) { showToast('warning', 'Subject and batch required'); return; }
+    if (!subject || !batch) { 
+      showToast('warning', 'Subject and batch required'); 
+      return; 
+    }
+
+    if (room && !isValidUrl(room)) {
+      showToast('warning', 'Please enter a valid HTTPS or HTTP URL, or leave blank');
+      return;
+    }
 
     const slotObj = {
       id: isEdit ? slot.id : uid(),
@@ -236,9 +302,18 @@ function openSlotModal(slot = null) {
     if (STATE.settings.gasUrl && window.apiRequest) {
       try {
         await window.apiRequest('saveSchedule', { schedule: STATE.schedule });
-      } catch(e) {
+      } catch (e) {
         showToast('warning', 'Saved locally, but Google Sheets sync failed');
       }
     }
   };
+}
+
+function isValidUrl(urlStr) {
+  try {
+    const url = new URL(urlStr);
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch (e) {
+    return false;
+  }
 }

@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderDashboard();
 });
 
-window.onSyncComplete = function() {
+window.onSyncComplete = function () {
   renderDashboard();
 };
 
@@ -28,6 +28,62 @@ function renderDashboard() {
 
   const teacherName = STATE.settings.teacherName || 'Tutor';
   const liveClassUrl = STATE.settings.liveClassLink || '#';
+  const w = (STATE.settings.dashboardWidgets) || {};
+
+  /* Build stat cards conditionally */
+  const statCards = [
+    w.studentCount !== false ? `
+      <div class="card stat-card">
+        <div class="stat-top">
+          <span class="stat-title">Total Enrolled</span>
+          <div class="stat-icon" style="background:var(--primary-container);color:var(--primary)"><i data-lucide="users" class="icon"></i></div>
+        </div>
+        <div class="stat-value">${totalStudents}</div>
+        <div style="font-size:12px;color:var(--text-secondary)">Active students</div>
+      </div>` : '',
+
+    w.attendanceStats !== false ? `
+      <div class="card stat-card">
+        <div class="stat-top">
+          <span class="stat-title">Today's Attendance</span>
+          <div class="stat-icon" style="background:var(--success-light);color:var(--success)"><i data-lucide="check-circle" class="icon"></i></div>
+        </div>
+        <div class="stat-value">${presentCount} <span style="font-size:14px;color:var(--text-secondary);font-weight:600">/ ${totalStudents}</span></div>
+        <div style="font-size:12px;color:var(--text-secondary)">Attendance Rate: ${attendanceRate}%</div>
+      </div>` : '',
+
+    w.pendingFees !== false ? `
+      <div class="card stat-card">
+        <div class="stat-top">
+          <span class="stat-title">Pending Dues</span>
+          <div class="stat-icon" style="background:var(--danger-light);color:var(--danger)"><i data-lucide="alert-circle" class="icon"></i></div>
+        </div>
+        <div class="stat-value" style="color:var(--danger)">${formatCurrency(totalPendingFees)}</div>
+        <div style="font-size:12px;color:var(--text-secondary)">Total outstanding</div>
+      </div>` : '',
+
+    w.recentExams !== false ? `
+      <div class="card stat-card">
+        <div class="stat-top">
+          <span class="stat-title">Exams Scheduled</span>
+          <div class="stat-icon" style="background:var(--warning-light);color:var(--warning)"><i data-lucide="file-text" class="icon"></i></div>
+        </div>
+        <div class="stat-value">${STATE.exams.length}</div>
+        <div style="font-size:12px;color:var(--text-secondary)">Active evaluation tests</div>
+      </div>` : ''
+  ].filter(Boolean).join('');
+
+  const timetablePanel = w.timetable !== false ? `
+      <div class="card panel">
+        <h3><i data-lucide="clock" class="icon" style="color:var(--primary)"></i> Class Timetable</h3>
+        ${renderScheduleWidget()}
+      </div>` : '';
+
+  const noticesPanel = w.notices !== false ? `
+      <div class="card panel">
+        <h3><i data-lucide="bell" class="icon" style="color:var(--warning)"></i> Latest Notice Board</h3>
+        ${renderNoticesWidget()}
+      </div>` : '';
 
   container.innerHTML = `
     <!-- GREETING BANNER -->
@@ -76,58 +132,14 @@ function renderDashboard() {
     </div>
 
     <!-- METRIC CARDS -->
-    <div class="stat-grid">
-      <div class="card stat-card">
-        <div class="stat-top">
-          <span class="stat-title">Total Enrolled</span>
-          <div class="stat-icon" style="background:var(--primary-container);color:var(--primary)"><i data-lucide="users" class="icon"></i></div>
-        </div>
-        <div class="stat-value">${totalStudents}</div>
-        <div style="font-size:12px;color:var(--text-secondary)">Active students</div>
-      </div>
-
-      <div class="card stat-card">
-        <div class="stat-top">
-          <span class="stat-title">Today's Attendance</span>
-          <div class="stat-icon" style="background:var(--success-light);color:var(--success)"><i data-lucide="check-circle" class="icon"></i></div>
-        </div>
-        <div class="stat-value">${presentCount} <span style="font-size:14px;color:var(--text-secondary);font-weight:600">/ ${totalStudents}</span></div>
-        <div style="font-size:12px;color:var(--text-secondary)">Attendance Rate: ${attendanceRate}%</div>
-      </div>
-
-      <div class="card stat-card">
-        <div class="stat-top">
-          <span class="stat-title">Pending Dues</span>
-          <div class="stat-icon" style="background:var(--danger-light);color:var(--danger)"><i data-lucide="alert-circle" class="icon"></i></div>
-        </div>
-        <div class="stat-value" style="color:var(--danger)">${formatCurrency(totalPendingFees)}</div>
-        <div style="font-size:12px;color:var(--text-secondary)">Total outstanding</div>
-      </div>
-
-      <div class="card stat-card">
-        <div class="stat-top">
-          <span class="stat-title">Exams Scheduled</span>
-          <div class="stat-icon" style="background:var(--warning-light);color:var(--warning)"><i data-lucide="file-text" class="icon"></i></div>
-        </div>
-        <div class="stat-value">${STATE.exams.length}</div>
-        <div style="font-size:12px;color:var(--text-secondary)">Active evaluation tests</div>
-      </div>
-    </div>
+    ${statCards ? `<div class="stat-grid">${statCards}</div>` : ''}
 
     <!-- DASHBOARD TWO-COLUMN LAYOUT -->
+    ${(timetablePanel || noticesPanel) ? `
     <div class="dash-grid">
-      <!-- SCHEDULE PANEL -->
-      <div class="card panel">
-        <h3><i data-lucide="clock" class="icon" style="color:var(--primary)"></i> Class Timetable</h3>
-        ${renderScheduleWidget()}
-      </div>
-
-      <!-- NOTICES PANEL -->
-      <div class="card panel">
-        <h3><i data-lucide="bell" class="icon" style="color:var(--warning)"></i> Latest Notice Board</h3>
-        ${renderNoticesWidget()}
-      </div>
-    </div>
+      ${timetablePanel}
+      ${noticesPanel}
+    </div>` : ''}
   `;
 
   if (window.lucide) lucide.createIcons();

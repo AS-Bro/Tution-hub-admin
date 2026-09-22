@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderNoticePage();
 });
 
-window.onSyncComplete = function() {
+window.onSyncComplete = function () {
   renderNoticePage();
 };
 
@@ -100,7 +100,7 @@ function bindNoticeEvents() {
         if (STATE.settings.gasUrl && window.apiRequest) {
           try {
             await window.apiRequest('saveNotice', { notices: STATE.notices });
-          } catch(e) {
+          } catch (e) {
             showToast('warning', 'Deleted locally, but Google Sheets sync failed');
           }
         }
@@ -192,7 +192,7 @@ function openNoticeModal() {
     if (STATE.settings.gasUrl && window.apiRequest) {
       try {
         await window.apiRequest('saveNotice', { notices: STATE.notices });
-      } catch(e) {
+      } catch (e) {
         showToast('warning', 'Published locally, but Google Sheets sync failed');
       }
     }
