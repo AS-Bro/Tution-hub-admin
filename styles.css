@@ -1114,6 +1114,126 @@ h5 {
   }
 }
 
+.att-col-mobile-batch,
+.att-mobile-details-btn,
+.fee-mobile-details-btn,
+.exam-mobile-details-btn {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .attendance-register-table,
+  .fee-management-table,
+  .exam-marks-table {
+    overflow-x: hidden;
+  }
+
+  .attendance-register-table table,
+  .fee-management-table table,
+  .exam-marks-table table {
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .attendance-register-table th,
+  .attendance-register-table td,
+  .fee-management-table th,
+  .fee-management-table td,
+  .exam-marks-table th,
+  .exam-marks-table td {
+    padding: 8px 6px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .att-col-id,
+  .fee-col-id,
+  .exam-col-id {
+    width: 19%;
+  }
+
+  .att-col-name,
+  .fee-col-name,
+  .exam-col-name {
+    width: 31%;
+  }
+
+  .att-col-mobile-batch,
+  .fee-col-batch,
+  .exam-col-batch {
+    width: 18%;
+  }
+
+  .attendance-register-table .att-col-parent,
+  .attendance-register-table .att-col-history,
+  .attendance-register-table .att-col-desktop-grade {
+    display: none;
+  }
+
+  .attendance-register-table .att-col-mobile-batch {
+    display: table-cell;
+  }
+
+  .attendance-register-table .att-col-status {
+    width: 32%;
+  }
+
+  .attendance-register-table .att-overall-rate {
+    display: none;
+  }
+
+  .attendance-register-table .att-mobile-details-btn,
+  .fee-management-table .fee-mobile-details-btn,
+  .exam-marks-table .exam-mobile-details-btn {
+    display: inline-flex;
+    margin-top: 5px;
+    padding: 4px 7px;
+    font-size: 11px;
+  }
+
+  .attendance-register-table .att-status-group {
+    display: flex !important;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 3px !important;
+    padding: 3px !important;
+  }
+
+  .attendance-register-table .att-status-group .btn {
+    padding: 4px 5px;
+    font-size: 10px;
+  }
+
+  .fee-management-table .fee-parent-summary,
+  .fee-management-table .fee-col-date,
+  .fee-management-table .fee-col-actions {
+    display: none;
+  }
+
+  .fee-management-table .fee-col-amount {
+    width: 17%;
+  }
+
+  .fee-management-table .fee-col-status {
+    width: 15%;
+  }
+
+  .exam-marks-table .exam-col-percentage,
+  .exam-marks-table .exam-col-actions {
+    display: none;
+  }
+
+  .exam-marks-table .exam-col-marks {
+    width: 32%;
+  }
+
+  .exam-marks-table .mark-input {
+    width: 100% !important;
+    min-width: 0;
+    padding: 7px 5px !important;
+  }
+}
+
 table {
   width: 100%;
   border-collapse: collapse;

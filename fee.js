@@ -116,34 +116,35 @@ function renderFeesPage() {
         <p>Try changing your month or batch filters.</p>
       </div>
     ` : `
-      <div class="table-wrap">
+      <div class="table-wrap fee-management-table">
         <table>
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Student Name</th>
-              <th>Batch</th>
-              <th>Monthly Fee</th>
-              <th>Status</th>
-              <th>Date Paid</th>
-              <th style="text-align:right">Actions</th>
+              <th class="fee-col-id">ID</th>
+              <th class="fee-col-name">Student Name</th>
+              <th class="fee-col-batch">Batch</th>
+              <th class="fee-col-amount">Monthly Fee</th>
+              <th class="fee-col-status">Status</th>
+              <th class="fee-col-date">Date Paid</th>
+              <th class="fee-col-actions" style="text-align:right">Actions</th>
             </tr>
           </thead>
           <tbody>
             ${records.map(r => `
               <tr>
-                <td><span style="font-weight:700;color:var(--primary)">${escapeHtml(r.student.studentId)}</span></td>
-                <td>
+                <td class="fee-col-id"><span style="font-weight:700;color:var(--primary)">${escapeHtml(r.student.studentId)}</span></td>
+                <td class="fee-col-name">
                   <div style="font-weight:700">${escapeHtml(r.student.studentName)}</div>
-                  <div style="font-size:12px;color:var(--text-secondary)">Parent: ${escapeHtml(r.student.parentName || '—')}</div>
+                  <div class="fee-parent-summary" style="font-size:12px;color:var(--text-secondary)">Parent: ${escapeHtml(r.student.parentName || '—')}</div>
+                  <button class="btn btn-outline btn-sm fee-mobile-details-btn" data-id="${escapeHtml(r.student.studentId)}">Info</button>
                 </td>
-                <td><span class="badge badge-blue">${escapeHtml(r.student.batch)}</span></td>
-                <td style="font-weight:700">${formatCurrency(r.status === 'Paid' ? r.amountPaid : r.expectedAmount)}</td>
-                <td>
+                <td class="fee-col-batch"><span class="badge badge-blue">${escapeHtml(r.student.batch)}</span></td>
+                <td class="fee-col-amount" style="font-weight:700">${formatCurrency(r.status === 'Paid' ? r.amountPaid : r.expectedAmount)}</td>
+                <td class="fee-col-status">
                   <span class="badge ${r.status === 'Paid' ? 'badge-green' : 'badge-red'}">${escapeHtml(r.status)}</span>
                 </td>
-                <td style="font-size:13px">${r.datePaid ? formatDate(r.datePaid) : '—'}</td>
-                <td style="text-align:right">
+                <td class="fee-col-date" style="font-size:13px">${r.datePaid ? formatDate(r.datePaid) : '—'}</td>
+                <td class="fee-col-actions" style="text-align:right">
                   <div style="display:inline-flex;gap:6px">
                     <button class="btn btn-sm ${r.status === 'Paid' ? 'btn-outline' : 'btn-success'} collect-single-btn" data-id="${escapeHtml(r.student.studentId)}">
                       ${r.status === 'Paid' ? 'Mark Paid' : 'Collect Fee'}
@@ -214,6 +215,10 @@ function bindFeeEvents() {
     };
   });
 
+  $all('.fee-mobile-details-btn').forEach(btn => {
+    btn.onclick = () => openFeeStudentDetails(btn.dataset.id);
+  });
+
   $all('.fee-remind-wa-btn').forEach(btn => {
     btn.onclick = () => {
       const tpl = (STATE.settings.whatsappTemplates && STATE.settings.whatsappTemplates.feeReminder)
@@ -227,6 +232,68 @@ function bindFeeEvents() {
       openWhatsApp(btn.dataset.phone, msg);
     };
   });
+}
+
+function openFeeStudentDetails(studentId) {
+  const student = STATE.students.find(s => String(s.studentId) === String(studentId));
+  if (!student) return;
+  const history = STATE.fees
+    .filter(record => String(record.studentId) === String(studentId))
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  const currentPayment = history.find(record =>
+    String(record.month || '').trim().toLowerCase() === feeState.month.trim().toLowerCase()
+  );
+  const historyHtml = history.length
+    ? history.map(record => `
+        <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)">
+          <span>${escapeHtml(record.month || '—')} · ${record.date ? formatDate(record.date) : '—'} · ${escapeHtml(record.paymentMode || 'Cash')}</span>
+          <strong>${formatCurrency(Number(record.amount) || 0)}</strong>
+        </div>
+      `).join('')
+    : '<div style="color:var(--text-secondary)">No payment history recorded.</div>';
+  const html = `
+    <div class="modal-header">
+      <h3>Fee Details</h3>
+      <button class="icon-btn" data-modal-close><i data-lucide="x" class="icon"></i></button>
+    </div>
+    <div class="modal-body">
+      <h4>${escapeHtml(student.studentName)} <span style="font-weight:400;color:var(--text-secondary)">(${escapeHtml(student.studentId)})</span></h4>
+      <div><strong>Batch:</strong> ${escapeHtml(student.batch || '—')}</div>
+      <div><strong>Parent Contact:</strong> ${escapeHtml(student.parentName || '—')} · ${escapeHtml(student.phone || '—')}</div>
+      <div><strong>Fee Status (${escapeHtml(feeState.month)}):</strong> <span class="badge ${currentPayment && currentPayment.status === 'Paid' ? 'badge-green' : 'badge-red'}">${currentPayment && currentPayment.status === 'Paid' ? 'Paid' : 'Pending'}</span></div>
+      <div><strong>Date Paid:</strong> ${currentPayment && currentPayment.date ? formatDate(currentPayment.date) : '—'}</div>
+      <div>
+        <strong>Payment History</strong>
+        <div style="max-height:240px;overflow-y:auto;margin-top:6px">${historyHtml}</div>
+      </div>
+    </div>
+    <div class="modal-footer" style="flex-wrap:wrap">
+      <button class="btn btn-outline" data-modal-close>Close</button>
+      <button class="btn btn-outline" id="fee-detail-reminder-btn"><i data-lucide="message-square" class="icon"></i> WhatsApp Reminder</button>
+      <button class="btn btn-primary" id="fee-detail-collect-btn"><i data-lucide="wallet" class="icon"></i> Collect Fee</button>
+    </div>
+  `;
+  const { overlay, close } = ModalManager.open(html);
+  const reminderBtn = $('#fee-detail-reminder-btn', overlay);
+  if (reminderBtn) reminderBtn.onclick = () => sendFeeReminder(student, Number(student.monthlyFee) || 1000);
+  const collectBtn = $('#fee-detail-collect-btn', overlay);
+  if (collectBtn) collectBtn.onclick = () => {
+    close();
+    openPaymentModal(student);
+  };
+  if (window.lucide) lucide.createIcons();
+}
+
+function sendFeeReminder(student, amount) {
+  const tpl = (STATE.settings.whatsappTemplates && STATE.settings.whatsappTemplates.feeReminder)
+    || 'Dear Parent, gentle reminder that tuition fee for {studentName} for the month of {date} ({amount}) is pending. Kindly clear the dues at your earliest convenience. Thank you - {centerName}';
+  const msg = formatMessageTemplate ? formatMessageTemplate(tpl, {
+    studentName: student.studentName,
+    amount: formatCurrency(amount),
+    date: feeState.month,
+    centerName: STATE.settings.tuitionName || 'Tuition Center'
+  }) : tpl;
+  openWhatsApp(student.phone, msg);
 }
 
 function openPaymentModal(student = null) {

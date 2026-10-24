@@ -530,38 +530,165 @@ async function exportStudentPDF(studentId) {
 }
 
 async function exportAllStudentsPDF() {
-  if (!STATE.students || STATE.students.length === 0) {
-    showToast('warning', 'No students to export');
+  const students = STATE.students.filter(s => {
+    const matchSearch = !studentFilters.search ||
+      (s.studentName && s.studentName.toLowerCase().includes(studentFilters.search.toLowerCase())) ||
+      (s.studentId && s.studentId.toLowerCase().includes(studentFilters.search.toLowerCase())) ||
+      (s.phone && s.phone.includes(studentFilters.search));
+    const matchBatch = !studentFilters.batch || s.batch === studentFilters.batch;
+    const matchStatus = !studentFilters.status || s.status === studentFilters.status;
+    return matchSearch && matchBatch && matchStatus;
+  });
+  if (students.length === 0) {
+    showToast('warning', 'No students match the current filters');
     return;
   }
   if (!window.jspdf) { showToast('error', 'PDF engine loading...'); return; }
   try {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text(`${STATE.settings.tuitionName || 'Tuition Center'} - Student Directory`, 15, 20);
-    doc.setFontSize(10);
-    doc.text(`Export Date: ${new Date().toLocaleDateString()}`, 15, 27);
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 12;
+    const tableWidth = pageWidth - margin * 2;
+    const columns = [
+      { title: 'Sl. No', width: 13 },
+      { title: 'Student ID', width: 32 },
+      { title: 'Full Name', width: 46 },
+      { title: 'Grade / Batch', width: 34 },
+      { title: 'Parent Name & Contact', width: 72 },
+      { title: 'Joining Date', width: 34 },
+      { title: 'Status', width: 28 }
+    ];
+    columns[columns.length - 1].width += tableWidth - columns.reduce((sum, column) => sum + column.width, 0);
 
-    let y = 38;
-    doc.setFont('helvetica', 'bold');
-    doc.text('ID', 15, y);
-    doc.text('Name', 45, y);
-    doc.text('Batch', 105, y);
-    doc.text('Phone', 145, y);
+    const batchCounts = students.reduce((counts, student) => {
+      const batch = student.batch || 'Unassigned';
+      counts[batch] = (counts[batch] || 0) + 1;
+      return counts;
+    }, {});
+    const batchSummary = Object.entries(batchCounts).map(([batch, count]) => `${batch}: ${count}`).join(' | ');
+    const activeCount = students.filter(student => (student.status || 'Active') === 'Active').length;
+    const filterSummary = [
+      studentFilters.search ? `Search: ${studentFilters.search}` : '',
+      studentFilters.batch ? `Batch: ${studentFilters.batch}` : '',
+      studentFilters.status ? `Status: ${studentFilters.status}` : ''
+    ].filter(Boolean).join(' | ') || 'All students';
 
-    doc.setFont('helvetica', 'normal');
-    STATE.students.forEach(s => {
-      y += 8;
-      if (y > 270) { doc.addPage(); y = 20; }
-      doc.text(String(s.studentId || ''), 15, y);
-      doc.text(String(s.studentName || ''), 45, y);
-      doc.text(String(s.batch || ''), 105, y);
-      doc.text(String(s.phone || ''), 145, y);
+    const drawTableHeader = y => {
+      let x = margin;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      columns.forEach(column => {
+        doc.setFillColor(51, 65, 85);
+        doc.setDrawColor(203, 213, 225);
+        doc.setTextColor(255, 255, 255);
+        doc.rect(x, y, column.width, 9, 'FD');
+        doc.text(doc.splitTextToSize(column.title, column.width - 4), x + 2, y + 5.8);
+        x += column.width;
+      });
+      doc.setTextColor(15, 23, 42);
+      return y + 9;
+    };
+
+    const drawReportHeader = () => {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.setTextColor(51, 65, 85);
+      doc.text('Tution Hub', margin, 18);
+      doc.setFontSize(13);
+      doc.setTextColor(15, 23, 42);
+      doc.text('STUDENT DIRECTORY REPORT', pageWidth - margin, 18, { align: 'right' });
+      doc.setDrawColor(51, 65, 85);
+      doc.setLineWidth(0.6);
+      doc.line(margin, 22, pageWidth - margin, 22);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(71, 85, 105);
+      doc.text(`Generated Date: ${new Date().toLocaleDateString()}`, margin, 28);
+      doc.text(`Total Students: ${students.length}`, margin + 75, 28);
+      doc.text(doc.splitTextToSize(`Batch / Filter Applied: ${filterSummary}`, tableWidth), margin, 33);
+
+      const summaryY = 38;
+      const summaryGap = 4;
+      const summaryWidth = (tableWidth - summaryGap * 2) / 3;
+      const summaryItems = [
+        { title: 'TOTAL STUDENTS', value: String(students.length) },
+        { title: 'BATCH BREAKDOWN', value: batchSummary || '—' },
+        { title: 'ACTIVE STUDENTS', value: `${activeCount} of ${students.length}` }
+      ];
+      summaryItems.forEach((item, index) => {
+        const x = margin + index * (summaryWidth + summaryGap);
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(203, 213, 225);
+        doc.roundedRect(x, summaryY, summaryWidth, 16, 1.5, 1.5, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7);
+        doc.setTextColor(71, 85, 105);
+        doc.text(item.title, x + 3, summaryY + 5);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(index === 1 ? 7 : 9);
+        doc.setTextColor(15, 23, 42);
+        const lines = doc.splitTextToSize(item.value, summaryWidth - 6).slice(0, 2);
+        doc.text(lines, x + 3, summaryY + 10);
+      });
+    };
+
+    drawReportHeader();
+    let y = drawTableHeader(58);
+    const rowBottom = pageHeight - 18;
+
+    students.forEach((student, index) => {
+      const values = [
+        String(index + 1),
+        String(student.studentId || ''),
+        String(student.studentName || ''),
+        String(student.batch || 'Unassigned'),
+        `${student.parentName || '—'}${student.phone ? `\n${student.phone}` : ''}`,
+        formatDate(student.joiningDate),
+        String(student.status || 'Active')
+      ];
+      const cellLines = values.map((value, cellIndex) =>
+        doc.splitTextToSize(value, columns[cellIndex].width - 4)
+      );
+      const rowHeight = Math.max(9, ...cellLines.map(lines => lines.length * 3.8 + 4));
+
+      if (y + rowHeight > rowBottom) {
+        doc.addPage();
+        y = drawTableHeader(18);
+      }
+
+      let x = margin;
+      cellLines.forEach((lines, cellIndex) => {
+        doc.setFillColor(index % 2 === 0 ? 248 : 255, index % 2 === 0 ? 250 : 255, index % 2 === 0 ? 252 : 255);
+        doc.setDrawColor(203, 213, 225);
+        doc.rect(x, y, columns[cellIndex].width, rowHeight, 'FD');
+        doc.setFont('helvetica', cellIndex === 6 && values[cellIndex] === 'Active' ? 'bold' : 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(15, 23, 42);
+        doc.text(lines, x + 2, y + 4.5);
+        x += columns[cellIndex].width;
+      });
+      y += rowHeight;
     });
 
-    triggerPdfDownload(doc, `all_students_${todayISO()}.pdf`);
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let page = 1; page <= totalPages; page++) {
+      doc.setPage(page);
+      doc.setDrawColor(203, 213, 225);
+      doc.setLineWidth(0.4);
+      doc.line(margin, pageHeight - 13, pageWidth - margin, pageHeight - 13);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(71, 85, 105);
+      doc.text('Confidential Student Directory Report — Tution Hub System', pageWidth / 2, pageHeight - 8, { align: 'center' });
+      doc.text(`Page ${page} of ${totalPages}`, pageWidth - margin, pageHeight - 8, { align: 'right' });
+    }
+
+    triggerPdfDownload(doc, `student_directory_${todayISO()}.pdf`);
   } catch (e) {
+    console.error('Student directory PDF export failed:', e);
     showToast('error', 'PDF export failed');
   }
 }

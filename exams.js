@@ -104,16 +104,16 @@ function renderExamsPage() {
       </div>
 
       <!-- MARKS REGISTER TABLE -->
-      <div class="table-wrap">
+      <div class="table-wrap exam-marks-table">
         <table>
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Student Name</th>
-              <th>Batch</th>
-              <th>Marks Obtained (Max: ${currentExam.totalMarks})</th>
-              <th>Percentage</th>
-              <th style="text-align:right">Report & Parent Notification</th>
+              <th class="exam-col-id">ID</th>
+              <th class="exam-col-name">Student Name</th>
+              <th class="exam-col-batch">Batch</th>
+              <th class="exam-col-marks">Marks Obtained (Max: ${currentExam.totalMarks})</th>
+              <th class="exam-col-percentage">Percentage</th>
+              <th class="exam-col-actions" style="text-align:right">Report & Parent Notification</th>
             </tr>
           </thead>
           <tbody>
@@ -122,18 +122,19 @@ function renderExamsPage() {
     const pct = (currentScore !== '' && !isNaN(currentScore)) ? Math.round((Number(currentScore) / currentExam.totalMarks) * 100) : null;
     return `
                 <tr>
-                  <td><span style="font-weight:700;color:var(--primary)">${escapeHtml(s.studentId)}</span></td>
-                  <td>
+                  <td class="exam-col-id"><span style="font-weight:700;color:var(--primary)">${escapeHtml(s.studentId)}</span></td>
+                  <td class="exam-col-name">
                     <div style="font-weight:700">${escapeHtml(s.studentName)}</div>
+                    <button class="btn btn-outline btn-sm exam-mobile-details-btn" data-student-id="${escapeHtml(s.studentId)}">Details</button>
                   </td>
-                  <td><span class="badge badge-blue">${escapeHtml(s.batch)}</span></td>
-                  <td>
+                  <td class="exam-col-batch"><span class="badge badge-blue">${escapeHtml(s.batch)}</span></td>
+                  <td class="exam-col-marks">
                     <input type="number" class="mark-input" data-student-id="${escapeHtml(s.studentId)}" value="${currentScore}" placeholder="0 - ${currentExam.totalMarks}" style="width:110px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-weight:700;background:var(--card);color:var(--text)" max="${currentExam.totalMarks}" min="0">
                   </td>
-                  <td>
+                  <td class="exam-col-percentage">
                     ${pct !== null ? `<span class="badge ${pct >= 40 ? 'badge-green' : 'badge-red'}">${pct}%</span>` : '—'}
                   </td>
-                  <td style="text-align:right">
+                  <td class="exam-col-actions" style="text-align:right">
                     <button class="btn btn-outline btn-sm send-mark-wa-btn" data-phone="${escapeHtml(s.phone || '')}" data-name="${escapeHtml(s.studentName)}" data-score="${currentScore}" data-max="${currentExam.totalMarks}" data-test="${escapeHtml(currentExam.testName)}">
                       <i data-lucide="message-square" class="icon" style="color:var(--success)"></i> Send Mark
                     </button>
@@ -201,6 +202,58 @@ function bindExamEvents(currentExam) {
       openWhatsApp(btn.dataset.phone, msg);
     };
   });
+
+  $all('.exam-mobile-details-btn').forEach(btn => {
+    btn.onclick = () => openExamStudentDetails(btn.dataset.studentId, currentExam);
+  });
+}
+
+function openExamStudentDetails(studentId, exam) {
+  const student = STATE.students.find(s => String(s.studentId) === String(studentId));
+  if (!student || !exam) return;
+  const markInput = $all('.mark-input').find(input => input.dataset.studentId === String(studentId));
+  const score = markInput ? markInput.value.trim() : '';
+  const percentage = score !== '' && Number(exam.totalMarks) > 0
+    ? Math.round((Number(score) / Number(exam.totalMarks)) * 100)
+    : null;
+  const grade = percentage === null ? 'Not graded' :
+    percentage >= 90 ? 'A+' :
+      percentage >= 80 ? 'A' :
+        percentage >= 70 ? 'B' :
+          percentage >= 60 ? 'C' :
+            percentage >= 50 ? 'D' :
+              percentage >= 40 ? 'E' : 'F';
+  const html = `
+    <div class="modal-header">
+      <h3>Exam Details</h3>
+      <button class="icon-btn" data-modal-close><i data-lucide="x" class="icon"></i></button>
+    </div>
+    <div class="modal-body">
+      <h4>${escapeHtml(student.studentName)} <span style="font-weight:400;color:var(--text-secondary)">(${escapeHtml(student.studentId)})</span></h4>
+      <div><strong>Batch:</strong> ${escapeHtml(student.batch || '—')}</div>
+      <div><strong>Test:</strong> ${escapeHtml(exam.testName)}</div>
+      <div><strong>Marks:</strong> ${score === '' ? 'Not entered' : `${escapeHtml(score)} / ${escapeHtml(exam.totalMarks)}`}</div>
+      <div><strong>Percentage:</strong> ${percentage === null ? '—' : `${percentage}%`}</div>
+      <div><strong>Grade:</strong> ${grade}</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-modal-close>Close</button>
+      <button class="btn btn-primary" id="exam-detail-whatsapp-btn"><i data-lucide="message-square" class="icon"></i> Send Mark on WhatsApp</button>
+    </div>
+  `;
+  const { overlay } = ModalManager.open(html);
+  const whatsappBtn = $('#exam-detail-whatsapp-btn', overlay);
+  if (whatsappBtn) {
+    whatsappBtn.onclick = () => {
+      if (score === '') {
+        showToast('warning', 'Please enter and save marks first!');
+        return;
+      }
+      const msg = `Dear Parent, marks update for ${student.studentName} in test "${exam.testName}": Scored ${score} / ${exam.totalMarks}. Keep encouraging your child! - ${STATE.settings.tuitionName || 'Tuition Center'}`;
+      openWhatsApp(student.phone, msg);
+    };
+  }
+  if (window.lucide) lucide.createIcons();
 }
 
 function openCreateExamModal() {

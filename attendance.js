@@ -191,16 +191,17 @@ function renderDailyView() {
         <p>${isAllStudents ? 'Add new students to your directory to start tracking attendance.' : 'Select another batch or add new students to this grade.'}</p>
       </div>
     ` : `
-      <div class="table-wrap">
+      <div class="table-wrap attendance-register-table">
         <table>
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Student Name</th>
-              ${isAllStudents ? '<th>Grade</th>' : ''}
-              <th>Parent Contact</th>
-              <th style="text-align:center">Mark Status</th>
-              <th style="text-align:right">History & Notice</th>
+              <th class="att-col-id">ID</th>
+              <th class="att-col-name">Student Name</th>
+              ${isAllStudents ? '<th class="att-col-desktop-grade">Grade</th>' : ''}
+              <th class="att-col-mobile-batch">Grade / Batch</th>
+              <th class="att-col-parent">Parent Contact</th>
+              <th class="att-col-status" style="text-align:center">Mark Status</th>
+              <th class="att-col-history" style="text-align:right">History & Notice</th>
             </tr>
           </thead>
           <tbody>
@@ -209,24 +210,26 @@ function renderDailyView() {
     const stats = computeStudentStats(s.studentId);
     return `
                 <tr>
-                  <td><span style="font-weight:700;color:var(--primary)">${escapeHtml(s.studentId)}</span></td>
-                  <td>
+                  <td class="att-col-id"><span style="font-weight:700;color:var(--primary)">${escapeHtml(s.studentId)}</span></td>
+                  <td class="att-col-name">
                     <div style="font-weight:700">${escapeHtml(s.studentName)}</div>
-                    <div style="font-size:12px;color:var(--text-secondary)">Overall Rate: ${stats.pct}%</div>
+                    <div class="att-overall-rate" style="font-size:12px;color:var(--text-secondary)">Overall Rate: ${stats.pct}%</div>
+                    <button class="btn btn-outline btn-sm att-mobile-details-btn" data-id="${escapeHtml(s.studentId)}">Info / Actions</button>
                   </td>
-                  ${isAllStudents ? `<td><span class="badge badge-blue">${escapeHtml(s.batch || '—')}</span></td>` : ''}
-                  <td>
+                  ${isAllStudents ? `<td class="att-col-desktop-grade"><span class="badge badge-blue">${escapeHtml(s.batch || '—')}</span></td>` : ''}
+                  <td class="att-col-mobile-batch"><span class="badge badge-blue">${escapeHtml(s.batch || '—')}</span></td>
+                  <td class="att-col-parent">
                     <div style="font-size:13px">${escapeHtml(s.parentName || '—')}</div>
                     <div style="font-size:12px;color:var(--text-secondary)">${escapeHtml(s.phone || '—')}</div>
                   </td>
-                  <td style="text-align:center">
-                    <div style="display:inline-flex;gap:6px;background:var(--border-subtle);padding:4px;border-radius:var(--radius-md)">
+                  <td class="att-col-status" style="text-align:center">
+                    <div class="att-status-group" style="display:inline-flex;gap:6px;background:var(--border-subtle);padding:4px;border-radius:var(--radius-md)">
                       <button class="btn btn-sm att-status-btn ${currentMark === 'Present' ? 'btn-success' : 'btn-outline'}" data-id="${escapeHtml(s.studentId)}" data-status="Present">Present</button>
                       <button class="btn btn-sm att-status-btn ${currentMark === 'Absent' ? 'btn-danger' : 'btn-outline'}" data-id="${escapeHtml(s.studentId)}" data-status="Absent">Absent</button>
                       <button class="btn btn-sm att-status-btn ${currentMark === 'Late' ? 'btn-warning' : 'btn-outline'}" data-id="${escapeHtml(s.studentId)}" data-status="Late">Late</button>
                     </div>
                   </td>
-                  <td style="text-align:right">
+                  <td class="att-col-history" style="text-align:right">
                     <button class="btn btn-outline btn-sm send-absent-wa-btn" data-phone="${escapeHtml(s.phone || '')}" data-name="${escapeHtml(s.studentName)}" title="Notify Parent">
                       <i data-lucide="message-circle" class="icon" style="color:var(--success)"></i> Notice
                     </button>
@@ -241,6 +244,9 @@ function renderDailyView() {
   `;
 
   if (window.lucide) lucide.createIcons();
+  $all('.att-mobile-details-btn').forEach(btn => {
+    btn.onclick = () => openAttendanceStudentDetails(btn.dataset.id);
+  });
   bindAttendanceEvents(filteredStudents);
 }
 
@@ -557,6 +563,58 @@ function getStudentAttendanceStatusCompact(studentId, dateStr) {
   return { class: 'not-marked', tooltip: 'Not marked' };
 }
 
+function openAttendanceStudentDetails(studentId) {
+  const student = STATE.students.find(s => String(s.studentId) === String(studentId));
+  if (!student) return;
+  const stats = computeStudentStats(student.studentId);
+  const history = STATE.attendance
+    .filter(record => String(record.studentId) === String(student.studentId))
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  const historyHtml = history.length
+    ? history.map(record => `
+        <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)">
+          <span>${formatDate(normalizeAttendanceDate(record.date) || record.date)}</span>
+          <span class="badge ${record.status === 'Present' ? 'badge-green' : record.status === 'Absent' ? 'badge-red' : 'badge-yellow'}">${escapeHtml(record.status || '—')}</span>
+        </div>
+      `).join('')
+    : '<div style="color:var(--text-secondary)">No attendance history recorded.</div>';
+  const html = `
+    <div class="modal-header">
+      <h3>Attendance Details</h3>
+      <button class="icon-btn" data-modal-close><i data-lucide="x" class="icon"></i></button>
+    </div>
+    <div class="modal-body">
+      <h4>${escapeHtml(student.studentName)} <span style="font-weight:400;color:var(--text-secondary)">(${escapeHtml(student.studentId)})</span></h4>
+      <div><strong>Grade / Batch:</strong> ${escapeHtml(student.batch || '—')}</div>
+      <div><strong>Parent Contact:</strong> ${escapeHtml(student.parentName || '—')} · ${escapeHtml(student.phone || '—')}</div>
+      <div><strong>Overall Rate:</strong> ${stats.pct}% (${stats.present} present, ${stats.absent} absent)</div>
+      <div>
+        <strong>Attendance History</strong>
+        <div style="max-height:240px;overflow-y:auto;margin-top:6px">${historyHtml}</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-modal-close>Close</button>
+      <button class="btn btn-primary" id="attendance-detail-notice-btn"><i data-lucide="message-circle" class="icon"></i> WhatsApp Notice</button>
+    </div>
+  `;
+  const { overlay } = ModalManager.open(html);
+  const noticeBtn = $('#attendance-detail-notice-btn', overlay);
+  if (noticeBtn) noticeBtn.onclick = () => sendAttendanceNotice(student);
+  if (window.lucide) lucide.createIcons();
+}
+
+function sendAttendanceNotice(student, studentName = student.studentName, phone = student.phone) {
+  const tpl = (STATE.settings.whatsappTemplates && STATE.settings.whatsappTemplates.absent)
+    || 'Dear Parent, your child {studentName} was marked ABSENT for tuition on {date}. Please inform us if there is an issue. - {centerName}';
+  const msg = window.formatMessageTemplate ? formatMessageTemplate(tpl, {
+    studentName,
+    date: formatDate(attState.date),
+    centerName: STATE.settings.tuitionName || 'Tuition Center'
+  }) : tpl;
+  openWhatsApp(phone, msg);
+}
+
 function bindAttendanceEvents(filteredStudents) {
   const datePicker = $('#att-date-picker');
   if (datePicker) {
@@ -659,14 +717,7 @@ function bindAttendanceEvents(filteredStudents) {
 
    $all('.send-absent-wa-btn').forEach(btn => {
      btn.onclick = () => {
-       const tpl = (STATE.settings.whatsappTemplates && STATE.settings.whatsappTemplates.absent)
-         || 'Dear Parent, your child {studentName} was marked ABSENT for tuition on {date}. Please inform us if there is an issue. - {centerName}';
-       const msg = window.formatMessageTemplate ? formatMessageTemplate(tpl, {
-         studentName: btn.dataset.name,
-         date: formatDate(attState.date),
-         centerName: STATE.settings.tuitionName || 'Tuition Center'
-       }) : tpl;
-       openWhatsApp(btn.dataset.phone, msg);
+       sendAttendanceNotice({}, btn.dataset.name, btn.dataset.phone);
      };
    });
 

@@ -4,7 +4,14 @@
     <option name="selectedModelId" value="auto" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="55046281-98fa-49bb-904a-362d7596f7a3" name="Changes" comment="version 3.1" />
+    <list default="true" id="55046281-98fa-49bb-904a-362d7596f7a3" name="Changes" comment="version 3.2">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/attendance.js" beforeDir="false" afterPath="$PROJECT_DIR$/attendance.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/exams.js" beforeDir="false" afterPath="$PROJECT_DIR$/exams.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/fee.js" beforeDir="false" afterPath="$PROJECT_DIR$/fee.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/student.js" beforeDir="false" afterPath="$PROJECT_DIR$/student.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles.css" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -106,7 +113,15 @@
       <option name="project" value="LOCAL" />
       <updated>1792835777878</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="version 3.2">
+      <option name="closed" value="true" />
+      <created>1792836352756</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1792836352756</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -116,8 +131,8 @@
     <option featureType="com.intellij.fileTypeFactory" implementationName="*.gs" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="version 3.2" />
     <MESSAGE value="version 3.1" />
-    <option name="LAST_COMMIT_MESSAGE" value="version 3.1" />
+    <MESSAGE value="version 3.2" />
+    <option name="LAST_COMMIT_MESSAGE" value="version 3.2" />
   </component>
 </project>
