@@ -4,10 +4,7 @@
     <option name="selectedModelId" value="auto" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="55046281-98fa-49bb-904a-362d7596f7a3" name="Changes" comment="version 3.1">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles.css" afterDir="false" />
-    </list>
+    <list default="true" id="55046281-98fa-49bb-904a-362d7596f7a3" name="Changes" comment="version 3.1" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -28,8 +25,12 @@
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "history": [
+    {
+      "assignee": "AS-Bro"
+    }
+  ],
   "lastFilter": {
-    "state": "OPEN",
     "assignee": "AS-Bro"
   }
 }]]></component>
@@ -89,7 +90,23 @@
       <option name="project" value="LOCAL" />
       <updated>1792834940820</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="version 3.2">
+      <option name="closed" value="true" />
+      <created>1792835581166</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1792835581166</updated>
+    </task>
+    <task id="LOCAL-00003" summary="version 3.1">
+      <option name="closed" value="true" />
+      <created>1792835777878</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1792835777878</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -99,6 +116,7 @@
     <option featureType="com.intellij.fileTypeFactory" implementationName="*.gs" />
   </component>
   <component name="VcsManagerConfiguration">
+    <MESSAGE value="version 3.2" />
     <MESSAGE value="version 3.1" />
     <option name="LAST_COMMIT_MESSAGE" value="version 3.1" />
   </component>

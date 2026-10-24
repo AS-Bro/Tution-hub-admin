@@ -78,6 +78,7 @@ function renderStudentsPage() {
               <th>ID</th>
               <th>Student Name</th>
               <th>Batch</th>
+              <th class="student-mobile-info-heading">Details</th>
               <th>Parent / Contact</th>
               <th>Monthly Fee</th>
               <th>Attendance %</th>
@@ -102,6 +103,9 @@ function renderStudentsPage() {
                     </div>
                   </td>
                   <td><span class="badge badge-blue">${escapeHtml(s.batch || 'Unassigned')}</span></td>
+                  <td class="student-mobile-info-cell">
+                    <button class="btn btn-outline btn-sm student-info-btn" data-id="${escapeHtml(s.studentId)}">Info</button>
+                  </td>
                   <td>
                     <div style="font-weight:600">${escapeHtml(s.parentName || '—')}</div>
                     <div style="font-size:12px;color:var(--text-secondary)">${escapeHtml(s.phone || '—')}</div>
@@ -171,6 +175,7 @@ function bindStudentEvents() {
   if (exportAllBtn) exportAllBtn.onclick = () => exportAllStudentsPDF();
 
   $all('.action-view-btn').forEach(b => b.onclick = () => openProfileModal(b.dataset.id));
+  $all('.student-info-btn').forEach(b => b.onclick = () => openStudentDetailsModal(b.dataset.id));
   $all('.action-idcard-btn').forEach(b => b.onclick = () => openIDCardModal(b.dataset.id));
   $all('.action-edit-btn').forEach(b => b.onclick = () => {
     const student = STATE.students.find(s => s.studentId === b.dataset.id);
@@ -179,6 +184,66 @@ function bindStudentEvents() {
   $all('.action-wa-btn').forEach(b => b.onclick = () => {
     openWhatsApp(b.dataset.phone, `Hello, this is regarding student ${b.dataset.name} at ${STATE.settings.tuitionName || 'Tuition Center'}.`);
   });
+}
+
+function openStudentDetailsModal(studentId) {
+  const student = STATE.students.find(s => s.studentId === studentId);
+  if (!student) return;
+
+  const stats = computeStudentStats(studentId);
+  const month = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+  const feeRecord = STATE.fees.find(f =>
+    String(f.studentId) === String(studentId) &&
+    String(f.month || '').trim().toLowerCase() === month.toLowerCase()
+  );
+  const feeStatus = feeRecord && String(feeRecord.status || '').toLowerCase() === 'paid' ? 'Paid' : 'Pending';
+  const html = `
+    <div class="modal-header">
+      <h3>Student Details</h3>
+      <button class="icon-btn" data-modal-close><i data-lucide="x" class="icon"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+        <div class="student-avatar">${escapeHtml((student.studentName || 'S').slice(0, 2).toUpperCase())}</div>
+        <div>
+          <h2 style="font-size:18px">${escapeHtml(student.studentName)}</h2>
+          <div style="font-size:13px;color:var(--text-secondary)">${escapeHtml(student.studentId)} · ${escapeHtml(student.batch || 'Unassigned')}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><strong>Parent</strong><div>${escapeHtml(student.parentName || '—')}</div></div>
+        <div><strong>Contact</strong><div>${escapeHtml(student.phone || '—')}</div></div>
+        <div><strong>Monthly Fee</strong><div>${formatCurrency(student.monthlyFee)}</div></div>
+        <div><strong>Fee Status (${escapeHtml(month)})</strong><div><span class="badge ${feeStatus === 'Paid' ? 'badge-green' : 'badge-red'}">${feeStatus}</span></div></div>
+        <div><strong>Attendance</strong><div>${stats.pct}% (${stats.present} present, ${stats.absent} absent)</div></div>
+        <div><strong>Status</strong><div><span class="badge ${student.status === 'Active' ? 'badge-green' : 'badge-gray'}">${escapeHtml(student.status || 'Active')}</span></div></div>
+        <div><strong>Joined</strong><div>${formatDate(student.joiningDate)}</div></div>
+      </div>
+    </div>
+    <div class="modal-footer" style="flex-wrap:wrap">
+      <button class="btn btn-outline" id="student-details-view-btn"><i data-lucide="eye" class="icon"></i> View</button>
+      <button class="btn btn-outline" id="student-details-edit-btn"><i data-lucide="edit-2" class="icon"></i> Edit</button>
+      <button class="btn btn-outline" id="student-details-id-btn"><i data-lucide="id-card" class="icon"></i> ID Card</button>
+      <button class="btn btn-outline" id="student-details-pdf-btn"><i data-lucide="file-text" class="icon"></i> Export PDF</button>
+      <button class="btn btn-primary" id="student-details-wa-btn"><i data-lucide="message-square" class="icon"></i> WhatsApp</button>
+    </div>
+  `;
+
+  const { overlay, close } = ModalManager.open(html);
+  const viewBtn = $('#student-details-view-btn', overlay);
+  if (viewBtn) viewBtn.onclick = () => { close(); openProfileModal(studentId); };
+  const editBtn = $('#student-details-edit-btn', overlay);
+  if (editBtn) editBtn.onclick = () => { close(); openStudentModal(student); };
+  const idBtn = $('#student-details-id-btn', overlay);
+  if (idBtn) idBtn.onclick = () => { close(); openIDCardModal(studentId); };
+  const pdfBtn = $('#student-details-pdf-btn', overlay);
+  if (pdfBtn) pdfBtn.onclick = () => exportStudentPDF(studentId);
+  const whatsappBtn = $('#student-details-wa-btn', overlay);
+  if (whatsappBtn) whatsappBtn.onclick = () => openWhatsApp(
+    student.phone,
+    `Hello, this is regarding student ${student.studentName} at ${STATE.settings.tuitionName || 'Tuition Center'}.`
+  );
+  if (window.lucide) lucide.createIcons();
 }
 
 function openStudentModal(student = null) {

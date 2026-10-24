@@ -1041,11 +1041,17 @@ h5 {
 .student-directory-table th:nth-child(1) { width: 8%; }
 .student-directory-table th:nth-child(2) { width: 22%; }
 .student-directory-table th:nth-child(3) { width: 10%; }
-.student-directory-table th:nth-child(4) { width: 17%; }
-.student-directory-table th:nth-child(5) { width: 10%; }
-.student-directory-table th:nth-child(6) { width: 12%; }
-.student-directory-table th:nth-child(7) { width: 8%; }
-.student-directory-table th:nth-child(8) { width: 13%; }
+.student-directory-table th:nth-child(4) { width: 0; }
+.student-directory-table th:nth-child(5) { width: 17%; }
+.student-directory-table th:nth-child(6) { width: 10%; }
+.student-directory-table th:nth-child(7) { width: 12%; }
+.student-directory-table th:nth-child(8) { width: 8%; }
+.student-directory-table th:nth-child(9) { width: 13%; }
+
+.student-mobile-info-heading,
+.student-mobile-info-cell {
+  display: none;
+}
 
 .student-directory-table td:nth-child(2) > div > div:last-child {
   min-width: 0;
@@ -1060,6 +1066,51 @@ h5 {
 @media (max-width: 900px) {
   .student-directory-table table {
     width: 900px;
+  }
+}
+
+@media (max-width: 767px) {
+  .student-directory-table {
+    overflow-x: hidden;
+  }
+
+  .student-directory-table table {
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .student-directory-table th:nth-child(1),
+  .student-directory-table td:nth-child(1) { width: 20%; }
+  .student-directory-table th:nth-child(2),
+  .student-directory-table td:nth-child(2) { width: 42%; }
+  .student-directory-table th:nth-child(3),
+  .student-directory-table td:nth-child(3) { width: 20%; }
+  .student-directory-table th:nth-child(4),
+  .student-directory-table td:nth-child(4) { width: 18%; }
+
+  .student-directory-table th:nth-child(n+5),
+  .student-directory-table td:nth-child(n+5) {
+    display: none;
+  }
+
+  .student-mobile-info-heading,
+  .student-mobile-info-cell {
+    display: table-cell;
+  }
+
+  .student-directory-table th,
+  .student-directory-table td {
+    padding: 10px 8px;
+  }
+
+  .student-directory-table td:nth-child(2) > div {
+    gap: 8px !important;
+  }
+
+  .student-directory-table .student-avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
   }
 }
 
