@@ -1122,6 +1122,29 @@ h5 {
 }
 
 @media (max-width: 768px) {
+  .attendance-actions {
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 8px !important;
+  }
+
+  .attendance-actions .attendance-view-toggle {
+    gap: 8px !important;
+  }
+
+  .attendance-actions #notify-absentees-btn {
+    flex: 1 1 auto;
+    white-space: normal;
+  }
+
+  .attendance-actions #save-att-btn {
+    flex: 1 1 100%;
+  }
+
+  .attendance-toolbar {
+    gap: 8px;
+  }
+
   .attendance-register-table,
   .fee-management-table,
   .exam-marks-table {

@@ -4,12 +4,9 @@
     <option name="selectedModelId" value="auto" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="55046281-98fa-49bb-904a-362d7596f7a3" name="Changes" comment="version 3.2">
+    <list default="true" id="55046281-98fa-49bb-904a-362d7596f7a3" name="Changes" comment="version 3.4">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/attendance.js" beforeDir="false" afterPath="$PROJECT_DIR$/attendance.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/exams.js" beforeDir="false" afterPath="$PROJECT_DIR$/exams.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fee.js" beforeDir="false" afterPath="$PROJECT_DIR$/fee.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student.js" beforeDir="false" afterPath="$PROJECT_DIR$/student.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -31,22 +28,22 @@
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "history": [
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;history&quot;: [
     {
-      "assignee": "AS-Bro"
+      &quot;assignee&quot;: &quot;AS-Bro&quot;
     }
   ],
-  "lastFilter": {
-    "assignee": "AS-Bro"
+  &quot;lastFilter&quot;: {
+    &quot;assignee&quot;: &quot;AS-Bro&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/AS-Bro/Tution-hub-admin.git",
-    "accountId": "09b42117-35e1-470d-be4a-240b2779432e"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/AS-Bro/Tution-hub-admin.git&quot;,
+    &quot;accountId&quot;: &quot;09b42117-35e1-470d-be4a-240b2779432e&quot;
   }
-}]]></component>
+}</component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/index.html" root0="FORCE_HIGHLIGHTING" />
   </component>
@@ -55,25 +52,40 @@
   &quot;fromUser&quot;: false
 }</component>
   <component name="ProjectId" id="3JgQ2CtugThWOyqLDPcLntWwykK" />
+  <component name="ProjectSessionTemplates">
+    <option name="panelTemplate">
+      <template>
+        <option name="modeId" value="Agent" />
+        <option name="model">
+          <model>
+            <option name="modelType" value="builtin_id" />
+            <option name="modelValue" value="auto" />
+          </model>
+        </option>
+        <option name="targetType" value="BACKGROUND" />
+        <option name="worktreeMode" value="WORKSPACE" />
+      </template>
+    </option>
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "codeWithMe.voiceChat.enabledByDefault": "false",
-    "copilot.chat.legacySessionMetadata.migrated": "true",
-    "git-widget-placeholder": "main",
-    "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "C:/MY files/my codes/My projects/Tution hub/I Think Final/Tution Hub 1/admin",
-    "nodejs_package_manager_path": "npm"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;copilot.chat.legacySessionMetadata.migrated&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/MY files/my codes/My projects/Tution hub/I Think Final/Tution Hub 1/admin&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;
   }
-}]]></component>
+}</component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -121,7 +133,15 @@
       <option name="project" value="LOCAL" />
       <updated>1792836352756</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="version 3.4">
+      <option name="closed" value="true" />
+      <created>1792838776548</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1792838776549</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -133,6 +153,7 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="version 3.1" />
     <MESSAGE value="version 3.2" />
-    <option name="LAST_COMMIT_MESSAGE" value="version 3.2" />
+    <MESSAGE value="version 3.4" />
+    <option name="LAST_COMMIT_MESSAGE" value="version 3.4" />
   </component>
 </project>

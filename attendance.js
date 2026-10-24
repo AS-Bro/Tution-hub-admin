@@ -107,7 +107,7 @@ function renderDailyView() {
         </div>
       </div>
 
-      <div class="toolbar">
+      <div class="toolbar attendance-toolbar">
         <div class="form-row" style="width:200px">
           <input type="date" id="att-date-picker" value="${attState.date}">
         </div>
@@ -142,8 +142,8 @@ function renderDailyView() {
          <h2>Daily Attendance Register</h2>
          <div class="section-sub">Mark student presence for selected date</div>
        </div>
-       <div style="display:flex;gap:10px">
-         <div style="display:flex;gap:6px;background:var(--border-subtle);padding:4px;border-radius:var(--radius-md)">
+       <div class="attendance-actions" style="display:flex;gap:10px">
+         <div class="attendance-view-toggle" style="display:flex;gap:6px;background:var(--border-subtle);padding:4px;border-radius:var(--radius-md)">
            <button class="btn btn-sm att-view-btn ${attState.viewMode === 'daily' ? 'btn-primary' : 'btn-outline'}" data-view="daily">
              <i data-lucide="list" class="icon"></i> Daily
            </button>
@@ -161,7 +161,7 @@ function renderDailyView() {
      </div>
 
     <!-- TOOLBAR & FILTERS -->
-    <div class="toolbar">
+    <div class="toolbar attendance-toolbar">
       <div class="form-row" style="width:200px">
         <input type="date" id="att-date-picker" value="${attState.date}">
       </div>
