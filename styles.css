@@ -1022,9 +1022,7 @@ h5 {
 }
 
 .student-directory-table {
-  width: 100%;
   max-width: 100%;
-  overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
 }
@@ -1037,7 +1035,6 @@ h5 {
 .student-directory-table th,
 .student-directory-table td {
   white-space: normal;
-  word-break: break-word;
   overflow-wrap: anywhere;
 }
 
@@ -1063,13 +1060,6 @@ h5 {
 @media (max-width: 900px) {
   .student-directory-table table {
     width: 900px;
-  }
-}
-
-@media (max-width: 767px) {
-  .student-directory-table th,
-  .student-directory-table td {
-    padding: 10px 12px;
   }
 }
 
@@ -2160,4 +2150,3 @@ input:checked+.slider:before {
     font-size: 12px;
   }
 }
-
