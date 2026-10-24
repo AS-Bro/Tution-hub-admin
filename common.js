@@ -20,11 +20,11 @@ const DEFAULT_SETTINGS = {
   gasUrl: 'https://script.google.com/macros/s/AKfycbxwQ6DxfQYFTfraO5XtrLrT1IpsvRQv3jHlkmeDmLadMErSbfxJI2pQf_lLmlST8uA/exec',
   tuitionName: 'TuitionHub Center',
   logoUrl: '',
-  teacherName: 'Prof. Sharma',
+  teacherName: 'Prof. Abc',
   currency: '₹',
   dateFormat: 'DD/MM/YYYY',
-  defaultBatch: 'Grade 10',
-  defaultMonthlyFee: 1000,
+  defaultBatch: 'Grade *',
+  defaultMonthlyFee: 500,
   idPrefix: 'ST',
   startingId: 1001,
   availableBatches: ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'],
@@ -119,7 +119,7 @@ const DEFAULT_EXAMS = [
 ];
 
 const DEFAULT_STUDENTS = [
-  { studentId: 'ST-1001', studentName: 'Demo Student', batch: 'Grade 10', phone: '**********', parentName: 'Demo Parent', monthlyFee: 1000, status: 'Active', joiningDate: '2026-01-10', password: 'Pass123' }
+  { studentId: 'ST-1001', studentName: 'Demo Student', batch: 'Grade 10', phone: '**********', parentName: 'Demo Parent', monthlyFee: 500, status: 'Active', joiningDate: '2026-01-10', password: 'Pass123' }
 ];
 
 function loadStorage(key, fallback) {

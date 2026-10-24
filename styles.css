@@ -1021,6 +1021,48 @@ h5 {
   background: var(--card);
 }
 
+.student-directory-table {
+  max-width: 100%;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.student-directory-table table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.student-directory-table th,
+.student-directory-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.student-directory-table th:nth-child(1) { width: 8%; }
+.student-directory-table th:nth-child(2) { width: 22%; }
+.student-directory-table th:nth-child(3) { width: 10%; }
+.student-directory-table th:nth-child(4) { width: 17%; }
+.student-directory-table th:nth-child(5) { width: 10%; }
+.student-directory-table th:nth-child(6) { width: 12%; }
+.student-directory-table th:nth-child(7) { width: 8%; }
+.student-directory-table th:nth-child(8) { width: 13%; }
+
+.student-directory-table td:nth-child(2) > div > div:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.student-directory-table td:last-child > div {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .student-directory-table table {
+    width: 900px;
+  }
+}
+
 table {
   width: 100%;
   border-collapse: collapse;

@@ -32,12 +32,15 @@ function renderFeesPage() {
   let totalPending = 0;
 
   let records = filteredStudents.map(s => {
-    const feeMatch = STATE.fees.find(f => f.studentId === s.studentId && f.month === feeState.month);
-    const status = feeMatch ? feeMatch.status : 'Pending';
-    const amountPaid = feeMatch ? Number(feeMatch.amount) : 0;
+    const feeMatch = STATE.fees.find(f =>
+      String(f.studentId) === String(s.studentId) &&
+      String(f.month || '').trim().toLowerCase() === feeState.month.trim().toLowerCase()
+    );
+    const amountPaid = feeMatch ? Number(feeMatch.amount) || 0 : 0;
+    const status = feeMatch && String(feeMatch.status || '').trim().toLowerCase() === 'paid' ? 'Paid' : 'Pending';
     const expectedAmount = Number(s.monthlyFee) || 1000;
 
-    if (status === 'Paid') totalCollected += expectedAmount;
+    if (status === 'Paid') totalCollected += amountPaid;
     else totalPending += expectedAmount;
 
     return {
@@ -135,7 +138,7 @@ function renderFeesPage() {
                   <div style="font-size:12px;color:var(--text-secondary)">Parent: ${escapeHtml(r.student.parentName || '—')}</div>
                 </td>
                 <td><span class="badge badge-blue">${escapeHtml(r.student.batch)}</span></td>
-                <td style="font-weight:700">${formatCurrency(r.expectedAmount)}</td>
+                <td style="font-weight:700">${formatCurrency(r.status === 'Paid' ? r.amountPaid : r.expectedAmount)}</td>
                 <td>
                   <span class="badge ${r.status === 'Paid' ? 'badge-green' : 'badge-red'}">${escapeHtml(r.status)}</span>
                 </td>
@@ -146,7 +149,7 @@ function renderFeesPage() {
                       ${r.status === 'Paid' ? 'Mark Paid' : 'Collect Fee'}
                     </button>
                     ${r.status === 'Paid' ? `
-                      <button class="icon-btn generate-receipt-btn" data-id="${escapeHtml(r.student.studentId)}" title="Download Receipt">
+                      <button class="icon-btn generate-receipt-btn" data-id="${escapeHtml(r.student.studentId)}" title="Print / Save Receipt">
                         <i data-lucide="receipt" class="icon"></i>
                       </button>
                     ` : `
@@ -206,7 +209,8 @@ function bindFeeEvents() {
   $all('.generate-receipt-btn').forEach(btn => {
     btn.onclick = () => {
       const student = STATE.students.find(s => s.studentId === btn.dataset.id);
-      generateFeeReceiptPDF(student, student.monthlyFee, feeState.month);
+      const feeRecord = STATE.fees.find(f => f.studentId === btn.dataset.id && f.month === feeState.month);
+      if (student) openFeeReceiptPrint(student, feeRecord ? feeRecord.amount : student.monthlyFee, feeState.month, feeRecord);
     };
   });
 
@@ -327,15 +331,19 @@ function openPaymentModal(student = null) {
     showToast('success', 'Fee payment recorded successfully');
     renderFeesPage();
 
-    if (STATE.settings.gasUrl && window.apiRequest) {
+    if (window.apiRequest && (!window.getGoogleSheetsUrl || window.getGoogleSheetsUrl())) {
       try {
-        await window.apiRequest('saveFee', { record });
+        const result = await window.apiRequest('saveFee', { record });
+        if (!result || result.success === false) {
+          throw new Error('Google Sheets did not confirm the fee payment save.');
+        }
       } catch (e) {
+        console.error('Google Sheets fee payment save failed:', e);
         showToast('warning', 'Saved locally, but Google Sheets sync failed');
       }
     }
 
-    /* Show success state in modal with Download Receipt option */
+    /* Show success state in modal with print/save receipt option */
     const modalBox = overlay.querySelector('.modal-box');
     if (modalBox) {
       modalBox.innerHTML = `
@@ -355,7 +363,7 @@ function openPaymentModal(student = null) {
         <div class="modal-footer" style="justify-content:space-between">
           <button class="btn btn-outline" data-modal-close>Close</button>
           <button class="btn btn-primary" id="download-receipt-modal-btn">
-            <i data-lucide="download" class="icon"></i> Download Receipt
+                <i data-lucide="printer" class="icon"></i> Print / Save Receipt
           </button>
         </div>
       `;
@@ -365,7 +373,7 @@ function openPaymentModal(student = null) {
       const dlBtn = $('#download-receipt-modal-btn', modalBox);
       if (dlBtn) {
         dlBtn.onclick = () => {
-          generateFeeReceiptPDF(stObj, amount, month);
+          openFeeReceiptPrint(stObj, amount, month, record);
         };
       }
     } else {
@@ -374,81 +382,99 @@ function openPaymentModal(student = null) {
   };
 }
 
-function generateFeeReceiptPDF(student, amount, month) {
-  if (!window.jspdf) { showToast('error', 'PDF library loading...'); return; }
-  try {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
-    const s = STATE.settings;
-    const rec = (s && s.receiptSettings) || {};
-    const receiptPrefix = rec.prefix || s.receiptPrefix || 'REC-';
-    const receiptTitle = rec.title || 'FEE PAYMENT RECEIPT';
-    const receiptFooter = rec.footerMessage || 'Thank you for your payment!';
-    const showLogo = rec.showLogo !== false;
-    const showStudentId = rec.showStudentId !== false;
-    const showParentDetails = rec.showParentDetails !== false;
-    const showPaymentDate = rec.showPaymentDate !== false;
-    const receiptNo = receiptPrefix + Math.floor(100000 + Math.random() * 900000);
+function openFeeReceiptPrint(student, amount, month, payment = {}) {
+  const settings = STATE.settings || {};
+  const receiptPrefix = (settings.receiptSettings && settings.receiptSettings.prefix) || settings.receiptPrefix || 'REC-';
+  const receiptNo = receiptPrefix + Math.floor(100000 + Math.random() * 900000);
+  const paymentDate = payment.date ? formatDate(payment.date) : formatDate(todayISO());
+  const safeStudentName = escapeHtml(student.studentName || '');
+  const safeStudentId = escapeHtml(student.studentId || '');
+  const safeBatch = escapeHtml(student.batch || '—');
+  const safeMonth = escapeHtml(month || '');
+  const safeParent = escapeHtml(student.parentName || '—');
+  const safeReceiptNo = escapeHtml(receiptNo);
+  const safePaymentDate = escapeHtml(paymentDate);
+  const safePaymentMode = escapeHtml(payment.paymentMode || 'Cash');
+  const safeAmount = escapeHtml(formatCurrency(amount));
+  const safeDescription = escapeHtml(`Tuition Fee - ${month || ''}`);
+  const safeFilename = `receipt_${String(student.studentId || 'student').replace(/[^a-zA-Z0-9_-]/g, '_')}_${receiptNo}`;
+  const printWindow = window.open('', '_blank');
 
-    doc.setFillColor(37, 99, 235);
-    doc.rect(0, 0, 148, 18, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text(s.tuitionName || 'Tuition Center', 12, 12);
-
-    if (showLogo && s.logoUrl && s.logoUrl.startsWith('data:image/')) {
-      try {
-        const format = s.logoUrl.includes('png') ? 'PNG' : 'JPEG';
-        doc.addImage(s.logoUrl, format, 115, 2, 22, 14);
-      } catch (e) { }
-    }
-
-    doc.setTextColor(17, 24, 39);
-    doc.setFontSize(16);
-    doc.text(receiptTitle, 12, 32);
-
-    doc.setFontSize(9); doc.setTextColor(107, 114, 128);
-    doc.text(`Receipt No: ${receiptNo}`, 12, 40);
-    if (showPaymentDate) {
-      doc.text(`Date: ${new Date().toLocaleDateString()}`, 12, 45);
-    }
-
-    doc.setFillColor(248, 250, 252);
-    doc.roundedRect(12, 52, 124, 45, 2, 2, 'F');
-
-    let yPos = 60;
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(107, 114, 128);
-    if (showStudentId) { doc.text('Student ID:', 16, yPos); }
-    doc.text('Student Name:', 16, showStudentId ? yPos + 8 : yPos);
-    doc.text('Batch:', 16, showStudentId ? yPos + 16 : yPos + 8);
-    doc.text('For Month:', 16, showStudentId ? yPos + 24 : yPos + 16);
-
-    doc.setTextColor(17, 24, 39);
-    if (showStudentId) { doc.text(student.studentId || '', 56, yPos); }
-    doc.text(student.studentName || '', 56, showStudentId ? yPos + 8 : yPos);
-    doc.text(student.batch || '—', 56, showStudentId ? yPos + 16 : yPos + 8);
-    doc.text(month || 'Current Month', 56, showStudentId ? yPos + 24 : yPos + 16);
-
-    if (showParentDetails && student.parentName) {
-      doc.setTextColor(107, 114, 128);
-      doc.setFontSize(8);
-      doc.text('Parent: ' + student.parentName, 16, 100);
-      if (student.phone) doc.text('Contact: ' + student.phone, 16, 104);
-    }
-
-    doc.setFillColor(236, 253, 245);
-    doc.roundedRect(12, 108, 124, 20, 2, 2, 'F');
-    doc.setFontSize(12); doc.setTextColor(16, 185, 129);
-    doc.text('Amount Paid:', 16, 121);
-    doc.setFontSize(14);
-    doc.text(formatCurrency(amount), 80, 121);
-
-    doc.setFontSize(8); doc.setTextColor(156, 163, 175);
-    doc.text(receiptFooter, 12, 140);
-
-    triggerPdfDownload(doc, `receipt_${student.studentId}_${receiptNo}.pdf`);
-  } catch (e) {
-    showToast('error', 'Failed to generate receipt PDF');
+  if (!printWindow) {
+    showToast('warning', 'Please allow pop-ups to print or save the receipt');
+    return;
   }
+
+  printWindow.document.open();
+  printWindow.document.write(`<!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Fee Receipt ${safeReceiptNo}</title>
+      <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 24px; color: #111827; font: 13px Arial, sans-serif; }
+        .receipt { width: 100%; max-width: 148mm; margin: 0 auto; border: 1px solid #334155; padding: 18px; }
+        .institute { margin: 0 0 14px; text-align: center; font-size: 20px; font-weight: 700; }
+        .title { margin: 0 0 16px; padding: 9px; background: #334155; color: #fff; text-align: center; font-size: 15px; letter-spacing: 1px; }
+        .details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; padding: 12px; border: 1px solid #64748b; }
+        .detail { display: grid; grid-template-columns: minmax(82px, auto) 1fr; gap: 6px; overflow-wrap: anywhere; }
+        .label { color: #334155; font-weight: 700; }
+        table { width: 100%; margin-top: 18px; border-collapse: collapse; }
+        th, td { padding: 9px 10px; border: 1px solid #475569; text-align: left; }
+        th { background: #e2e8f0; color: #111827; }
+        .amount { text-align: right; }
+        .total td { background: #f1f5f9; font-weight: 700; }
+        .payment-mode { margin-top: 16px; padding: 10px; border: 1px solid #64748b; }
+        .footer { margin-top: 24px; text-align: center; }
+        .footer p { margin: 5px 0; }
+        @media print {
+          @page { size: auto; margin: 10mm; }
+          body { padding: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+          .receipt { max-width: 100%; break-inside: avoid; }
+        }
+        @media (max-width: 480px) {
+          body { padding: 10px; }
+          .receipt { padding: 12px; }
+          .details { grid-template-columns: 1fr; }
+        }
+      </style>
+    </head>
+    <body>
+      <main class="receipt">
+        <h1 class="institute">Tution Hub</h1>
+        <h2 class="title">FEE RECEIPT</h2>
+        <section class="details">
+          <div class="detail"><span class="label">Receipt No</span><span>${safeReceiptNo}</span></div>
+          <div class="detail"><span class="label">Payment Date</span><span>${safePaymentDate}</span></div>
+          <div class="detail"><span class="label">Student ID</span><span>${safeStudentId}</span></div>
+          <div class="detail"><span class="label">Fee Month</span><span>${safeMonth}</span></div>
+          <div class="detail"><span class="label">Student Name</span><span>${safeStudentName}</span></div>
+          <div class="detail"><span class="label">Parent</span><span>${safeParent}</span></div>
+          <div class="detail"><span class="label">Batch / Class</span><span>${safeBatch}</span></div>
+        </section>
+        <table>
+          <thead>
+            <tr><th>Sl.No</th><th>Description</th><th class="amount">Amount Paid</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>1</td><td>${safeDescription}</td><td class="amount">${safeAmount}</td></tr>
+            <tr class="total"><td colspan="2">Total</td><td class="amount">${safeAmount}</td></tr>
+          </tbody>
+        </table>
+        <div class="payment-mode"><span class="label">Payment Mode:</span> ${safePaymentMode}</div>
+        <footer class="footer">
+          <p><strong>Thank you for your payment!</strong></p>
+          <p>This is a computer-generated receipt.</p>
+        </footer>
+      </main>
+    </body>
+    </html>`);
+  printWindow.document.close();
+  printWindow.document.title = safeFilename;
+  printWindow.setTimeout(() => {
+    printWindow.focus();
+    printWindow.print();
+  }, 250);
 }

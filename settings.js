@@ -71,6 +71,9 @@ function renderSettingsPage() {
         <button class="settings-nav-btn ${activeSettingsTab === 'academic' ? 'active' : ''}" data-tab="academic">
           <i data-lucide="calendar" class="icon"></i> Academic Settings
         </button>
+        <button class="settings-nav-btn ${activeSettingsTab === 'timetable' ? 'active' : ''}" data-tab="timetable">
+          <i data-lucide="clock" class="icon"></i> Timetable Defaults
+        </button>
         <button class="settings-nav-btn ${activeSettingsTab === 'system' ? 'active' : ''}" data-tab="system">
           <i data-lucide="database" class="icon"></i> System & Backup
         </button>
@@ -105,6 +108,8 @@ function renderTabContent(tab, s, app, rec, wa, dash, acad) {
       return renderDashboardTab(dash);
     case 'academic':
       return renderAcademicTab(acad);
+    case 'timetable':
+      return renderTimetableDefaultsTab();
     case 'system':
       return renderSystemTab(s);
     default:
@@ -713,8 +718,72 @@ function renderAcademicTab(acad) {
   `;
 }
 
+function renderTimetableDefaultsTab() {
+  let defaults = {};
+  try {
+    const storedDefaults = JSON.parse(localStorage.getItem('timetable_defaults') || '{}');
+    defaults = storedDefaults && typeof storedDefaults === 'object' && !Array.isArray(storedDefaults)
+      ? storedDefaults
+      : {};
+  } catch (error) {
+    console.warn('Unable to load timetable defaults:', error);
+  }
+
+  return `
+    <div class="card">
+      <h3 style="font-size:18px;margin-bottom:6px;display:flex;align-items:center;gap:8px">
+        <i data-lucide="clock" class="icon" style="color:var(--primary)"></i> Timetable Defaults
+      </h3>
+      <p style="font-size:13.5px;color:var(--text-secondary);margin-bottom:20px">
+        Set the values pre-filled when you add a new timetable slot.
+      </p>
+
+      <form id="timetable-defaults-form" style="display:flex;flex-direction:column;gap:16px">
+        <div class="form-grid-2">
+          <div class="form-row">
+            <label>Default Subject Name</label>
+            <input type="text" id="tt-default-subject" value="${escapeHtml(defaults.subject || '')}" placeholder="e.g. Mathematics">
+          </div>
+          <div class="form-row">
+            <label>Default Batch / Grade</label>
+            <input type="text" id="tt-default-batch" value="${escapeHtml(defaults.batch || '')}" placeholder="e.g. Grade 10">
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-row">
+            <label>Default Time Slot</label>
+            <input type="text" id="tt-default-time" value="${escapeHtml(defaults.time || '')}" placeholder="e.g. 04:00 PM - 05:30 PM">
+          </div>
+          <div class="form-row">
+            <label>Default Recurring Days</label>
+            <input type="text" id="tt-default-days" value="${escapeHtml(defaults.days || '')}" placeholder="e.g. Mon, Wed, Fri">
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-row">
+            <label>Default Tutor / Teacher</label>
+            <input type="text" id="tt-default-teacher" value="${escapeHtml(defaults.teacher || '')}" placeholder="Tutor Name">
+          </div>
+          <div class="form-row">
+            <label>Default Online Class URL</label>
+            <input type="url" id="tt-default-url" value="${escapeHtml(defaults.room || '')}" placeholder="https://meet.google.com/...">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:8px">
+          <button type="button" class="btn btn-primary" id="save-timetable-defaults-btn" style="background:#334155;border-color:#334155;color:#fff">
+            <i data-lucide="save" class="icon"></i> Save Timetable Defaults
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
 /* ==========================================================================
-   9. SYSTEM, BACKUP & SYNC TAB
+   10. SYSTEM, BACKUP & SYNC TAB
    ========================================================================== */
 function renderSystemTab(s) {
   const currentUrl = (window.getGoogleSheetsUrl && window.getGoogleSheetsUrl()) || s.gasUrl || '';
@@ -844,7 +913,10 @@ function bindSettingsEvents() {
   // 8. Academic Events
   bindAcademicEvents();
 
-  // 9. System & Backup Events
+  // 9. Timetable Defaults Events
+  bindTimetableDefaultsEvents();
+
+  // 10. System & Backup Events
   bindSystemEvents();
 }
 
@@ -1155,6 +1227,30 @@ function bindAcademicEvents() {
       }
     };
   }
+}
+
+function bindTimetableDefaultsEvents() {
+  const saveBtn = $('#save-timetable-defaults-btn');
+  if (!saveBtn) return;
+
+  saveBtn.onclick = () => {
+    const defaults = {
+      subject: $('#tt-default-subject').value.trim(),
+      batch: $('#tt-default-batch').value.trim(),
+      time: $('#tt-default-time').value.trim(),
+      days: $('#tt-default-days').value.trim(),
+      teacher: $('#tt-default-teacher').value.trim(),
+      room: $('#tt-default-url').value.trim()
+    };
+
+    try {
+      localStorage.setItem('timetable_defaults', JSON.stringify(defaults));
+      showToast('success', 'Timetable defaults saved');
+    } catch (error) {
+      console.error('Unable to save timetable defaults:', error);
+      showToast('warning', 'Unable to save timetable defaults');
+    }
+  };
 }
 
 function bindSystemEvents() {

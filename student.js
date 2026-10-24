@@ -71,7 +71,7 @@ function renderStudentsPage() {
         <button class="btn btn-primary btn-sm" id="empty-add-btn">Add Student</button>
       </div>
     ` : `
-      <div class="table-wrap">
+      <div class="table-wrap student-directory-table">
         <table>
           <thead>
             <tr>

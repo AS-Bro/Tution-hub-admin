@@ -23,10 +23,42 @@ window.onSyncComplete = function () {
 
 function initAttendanceMarks() {
   attState.localMarks = {};
-  const existingForDate = STATE.attendance.filter(a => a.date === attState.date);
+  const existingForDate = STATE.attendance.filter(a => normalizeAttendanceDate(a.date) === attState.date);
   existingForDate.forEach(a => {
     attState.localMarks[a.studentId] = a.status;
   });
+}
+
+function normalizeAttendanceDate(value) {
+  if (!value) return '';
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return dateToISO(value);
+
+  const dateValue = String(value).trim();
+  const isoMatch = dateValue.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    if (/[T\s]/.test(dateValue)) {
+      const parsedDate = new Date(dateValue);
+      if (!Number.isNaN(parsedDate.getTime())) return dateToISO(parsedDate);
+    }
+    const [, year, month, day] = isoMatch;
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    if (date.getFullYear() !== Number(year) || date.getMonth() !== Number(month) - 1 || date.getDate() !== Number(day)) return '';
+    return dateToISO(date);
+  }
+
+  const localMatch = dateValue.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (localMatch) {
+    const [, first, second, year] = localMatch;
+    const firstValue = Number(first);
+    const secondValue = Number(second);
+    const month = firstValue <= 12 && secondValue > 12 ? firstValue : secondValue;
+    const day = firstValue <= 12 && secondValue > 12 ? secondValue : firstValue;
+    const date = new Date(Number(year), month - 1, day);
+    if (date.getFullYear() !== Number(year) || date.getMonth() !== month - 1 || date.getDate() !== day) return '';
+    return dateToISO(date);
+  }
+
+  return '';
 }
 
 function renderAttendancePage() {
@@ -254,11 +286,11 @@ function getActiveStudents() {
 }
 
 function getStudentAttendanceForMonth(studentId, date) {
-  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
-  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  const firstDay = dateToISO(new Date(date.getFullYear(), date.getMonth(), 1));
+  const lastDay = dateToISO(new Date(date.getFullYear(), date.getMonth() + 1, 0));
 
   const records = STATE.attendance.filter(a => {
-    const aDate = parseISO(a.date);
+    const aDate = normalizeAttendanceDate(a.date);
     return a.studentId === studentId && aDate >= firstDay && aDate <= lastDay;
   });
 
@@ -268,7 +300,7 @@ function getStudentAttendanceForMonth(studentId, date) {
 function getStudentMonthlyStats(studentId, date) {
   let records = getStudentAttendanceForMonth(studentId, date);
   // Exclude any attendance records that fall on holidays (Sundays / configured)
-  records = records.filter(r => !isHoliday(r.date));
+  records = records.filter(r => !isHoliday(normalizeAttendanceDate(r.date)));
 
   // Count raw statuses
   const present = records.filter(r => r.status === 'Present').length;
@@ -513,7 +545,7 @@ function getStudentAttendanceStatusCompact(studentId, dateStr) {
     return { class: 'holiday', tooltip: 'Holiday' };
   }
 
-  const record = STATE.attendance.find(a => a.studentId === studentId && a.date === dateStr);
+  const record = STATE.attendance.find(a => a.studentId === studentId && normalizeAttendanceDate(a.date) === dateStr);
   if (!record) {
     return { class: 'not-marked', tooltip: 'Not marked' };
   }
@@ -592,8 +624,9 @@ function bindAttendanceEvents(filteredStudents) {
 
       saveStorage(LS_KEYS.ATTENDANCE, STATE.attendance);
       showToast('success', `Attendance saved for ${formatDate(attState.date)}`);
+      renderAttendancePage();
 
-      if (STATE.settings.gasUrl && window.apiRequest) {
+      if (window.getGoogleSheetsUrl && window.getGoogleSheetsUrl() && window.apiRequest) {
         try {
           await window.apiRequest('saveAttendance', { date: attState.date, records: newRecords });
         } catch (e) {

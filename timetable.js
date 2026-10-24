@@ -209,6 +209,9 @@ function openSlotModal(slot = null) {
   const isEdit = !!slot;
   const batches = Array.from(new Set(STATE.students.map(s => s.batch).filter(Boolean)));
   if (batches.length === 0) batches.push('Grade 10', 'Grade 12');
+  const defaults = getTimetableDefaults();
+  const defaultValue = (key, fallback) =>
+    Object.prototype.hasOwnProperty.call(defaults, key) ? defaults[key] : fallback;
 
   const html = `
     <div class="modal-header">
@@ -219,33 +222,33 @@ function openSlotModal(slot = null) {
       <div class="form-grid-2">
         <div class="form-row">
           <label>Subject Name</label>
-          <input type="text" id="sm-subject" value="${escapeHtml(slot ? slot.subject : '')}" placeholder="e.g. Mathematics" required>
+          <input type="text" id="sm-subject" value="${escapeHtml(slot ? slot.subject : defaultValue('subject', ''))}" placeholder="e.g. Mathematics" required>
         </div>
         <div class="form-row">
           <label>Batch / Grade</label>
-          <input type="text" id="sm-batch" value="${escapeHtml(slot ? slot.batch : batches[0])}" placeholder="e.g. Grade 10" required>
+          <input type="text" id="sm-batch" value="${escapeHtml(slot ? slot.batch : defaultValue('batch', batches[0]))}" placeholder="e.g. Grade 10" required>
         </div>
       </div>
 
       <div class="form-grid-2">
         <div class="form-row">
           <label>Time Slot</label>
-          <input type="text" id="sm-time" value="${escapeHtml(slot ? slot.time : '04:00 PM - 05:30 PM')}" placeholder="e.g. 04:00 PM - 05:30 PM" required>
+          <input type="text" id="sm-time" value="${escapeHtml(slot ? slot.time : defaultValue('time', '04:00 PM - 05:30 PM'))}" placeholder="e.g. 04:00 PM - 05:30 PM" required>
         </div>
         <div class="form-row">
           <label>Recurring Days</label>
-          <input type="text" id="sm-days" value="${escapeHtml(slot ? slot.days : 'Mon, Wed, Fri')}" placeholder="e.g. Mon, Wed, Fri" required>
+          <input type="text" id="sm-days" value="${escapeHtml(slot ? slot.days : defaultValue('days', 'Mon, Wed, Fri'))}" placeholder="e.g. Mon, Wed, Fri" required>
         </div>
       </div>
 
       <div class="form-grid-2">
         <div class="form-row">
           <label>Tutor / Teacher</label>
-          <input type="text" id="sm-teacher" value="${escapeHtml(slot ? slot.teacher : STATE.settings.teacherName || '')}" placeholder="Tutor Name">
+          <input type="text" id="sm-teacher" value="${escapeHtml(slot ? slot.teacher : defaultValue('teacher', STATE.settings.teacherName || ''))}" placeholder="Tutor Name">
         </div>
         <div class="form-row">
           <label>Online Class URL</label>
-          <input type="url" id="sm-room" value="${escapeHtml(slot ? slot.room : '')}" placeholder="https://meet.google.com/..." title="HTTPS URL for meeting link (optional)">
+          <input type="url" id="sm-room" value="${escapeHtml(slot ? slot.room : defaultValue('room', ''))}" placeholder="https://meet.google.com/..." title="HTTPS URL for meeting link (optional)">
           <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">Optional. Enter meeting URL (Google Meet, Zoom, Teams, etc)</div>
         </div>
       </div>
@@ -307,6 +310,16 @@ function openSlotModal(slot = null) {
       }
     }
   };
+}
+
+function getTimetableDefaults() {
+  try {
+    const defaults = JSON.parse(localStorage.getItem('timetable_defaults') || '{}');
+    return defaults && typeof defaults === 'object' && !Array.isArray(defaults) ? defaults : {};
+  } catch (error) {
+    console.warn('Unable to load timetable defaults:', error);
+    return {};
+  }
 }
 
 function isValidUrl(urlStr) {
