@@ -4,16 +4,9 @@
     <option name="selectedModelId" value="auto" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="55046281-98fa-49bb-904a-362d7596f7a3" name="Changes" comment="version 3">
-      <changelist_data name="Kailasnath" email="kailasnathad29@gmail.com" automatic="false" />
-      <change beforePath="$PROJECT_DIR$/attendance.js" beforeDir="false" afterPath="$PROJECT_DIR$/attendance.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common.js" beforeDir="false" afterPath="$PROJECT_DIR$/common.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fee.js" beforeDir="false" afterPath="$PROJECT_DIR$/fee.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/google-sheets-sync.js" beforeDir="false" afterPath="$PROJECT_DIR$/google-sheets-sync.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/settings.js" beforeDir="false" afterPath="$PROJECT_DIR$/settings.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/student.js" beforeDir="false" afterPath="$PROJECT_DIR$/student.js" afterDir="false" />
+    <list default="true" id="55046281-98fa-49bb-904a-362d7596f7a3" name="Changes" comment="version 3.1">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/timetable.js" beforeDir="false" afterPath="$PROJECT_DIR$/timetable.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -88,6 +81,15 @@
       <option name="presentableId" value="Default" />
       <updated>1790080023011</updated>
     </task>
+    <task id="LOCAL-00001" summary="version 3.1">
+      <option name="closed" value="true" />
+      <created>1792834940819</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1792834940820</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -95,5 +97,9 @@
   </component>
   <component name="UnknownFeatures">
     <option featureType="com.intellij.fileTypeFactory" implementationName="*.gs" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="version 3.1" />
+    <option name="LAST_COMMIT_MESSAGE" value="version 3.1" />
   </component>
 </project>

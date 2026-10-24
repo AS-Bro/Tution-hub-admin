@@ -1022,7 +1022,9 @@ h5 {
 }
 
 .student-directory-table {
+  width: 100%;
   max-width: 100%;
+  overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
 }
@@ -1035,6 +1037,7 @@ h5 {
 .student-directory-table th,
 .student-directory-table td {
   white-space: normal;
+  word-break: break-word;
   overflow-wrap: anywhere;
 }
 
@@ -1060,6 +1063,13 @@ h5 {
 @media (max-width: 900px) {
   .student-directory-table table {
     width: 900px;
+  }
+}
+
+@media (max-width: 767px) {
+  .student-directory-table th,
+  .student-directory-table td {
+    padding: 10px 12px;
   }
 }
 
@@ -1621,6 +1631,38 @@ body.density-compact .form-row textarea {
   color: #fff !important;
 }
 
+@media (max-width: 768px) {
+  .settings-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    min-width: 0;
+  }
+
+  .settings-nav {
+    position: static;
+    top: auto;
+    z-index: auto;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding-bottom: 8px;
+  }
+
+  .settings-nav-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .settings-tab-content {
+    position: relative;
+    min-width: 0;
+    width: 100%;
+  }
+}
+
 /* Color Swatches */
 .color-swatch-list {
   display: flex;
@@ -2118,5 +2160,4 @@ input:checked+.slider:before {
     font-size: 12px;
   }
 }
-
 
