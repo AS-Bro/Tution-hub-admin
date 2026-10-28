@@ -766,6 +766,89 @@ h5 {
   opacity: 0.9;
 }
 
+.today-schedule-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  border-color: var(--border);
+  background: linear-gradient(120deg, var(--card), var(--primary-container));
+}
+
+.today-schedule-heading,
+.today-schedule-class,
+.today-schedule-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.today-schedule-icon {
+  display: flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 14px;
+  background: var(--primary);
+  color: #fff;
+}
+
+.today-schedule-eyebrow {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.today-schedule-heading h2 {
+  color: var(--text);
+  font-family: 'Poppins', sans-serif;
+  font-size: 17px;
+}
+
+.today-schedule-heading h2 span {
+  color: var(--text-secondary);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.today-schedule-class {
+  flex: 1;
+  min-width: 190px;
+}
+
+.today-schedule-subject {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.today-schedule-details {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.today-schedule-details span {
+  padding: 0 3px;
+}
+
+.today-schedule-empty {
+  flex: 1;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.today-schedule-actions {
+  flex-wrap: wrap;
+}
+
 .greeting-stats {
   display: flex;
   gap: 12px;
@@ -870,15 +953,383 @@ h5 {
   font-weight: 500;
 }
 
+.fee-progress-track {
+  height: 8px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--border-subtle);
+}
+
+.fee-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--success);
+  transition: width 0.25s ease;
+}
+
+.fee-progress-label {
+  margin-top: 6px;
+  color: var(--success);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fee-progress-label span {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.fee-payment-mode-tag {
+  display: inline-flex;
+  align-items: center;
+  margin: 4px 0 0 5px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
 .dash-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
 }
 
+.dashboard-productivity-grid {
+  margin-top: 20px;
+  align-items: start;
+}
+
+.dashboard-widget-heading,
+.dashboard-attendance-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dashboard-widget-heading > span,
+.dashboard-attendance-student small,
+.dashboard-overdue-item small,
+.dashboard-exam-meta,
+.dashboard-exam-metrics small,
+.dashboard-exam-toppers small {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.dashboard-attendance-list {
+  max-height: 390px;
+  overflow: auto;
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.dashboard-attendance-row,
+.dashboard-overdue-item,
+.dashboard-exam-toppers > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.dashboard-attendance-student,
+.dashboard-overdue-item > span,
+.dashboard-exam-toppers > div > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dashboard-attendance-student strong,
+.dashboard-overdue-item strong {
+  overflow-wrap: anywhere;
+}
+
+.dashboard-attendance-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+}
+
+.dashboard-attendance-mark {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  color: #334155;
+  background: var(--card);
+}
+
+.dashboard-attendance-mark.is-selected {
+  color: #fff;
+  border-color: #334155;
+  background: #334155;
+}
+
+.dashboard-attendance-footer {
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.dashboard-attendance-footer [role="status"] {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.dashboard-overdue-list {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.dashboard-overdue-item {
+  padding: 8px 0;
+}
+
+.dashboard-overdue-item .btn {
+  flex-shrink: 0;
+  padding: 5px 7px;
+  color: #334155;
+  border-color: #334155;
+}
+
+.dashboard-overdue-item .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.dashboard-more-dues,
+.dashboard-exam-link {
+  display: inline-flex;
+  margin-top: 10px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dashboard-widget-empty {
+  padding: 18px 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.dashboard-exam-title {
+  margin-top: 8px;
+  color: #334155;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.dashboard-exam-meta {
+  margin-top: 4px;
+}
+
+.dashboard-exam-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.dashboard-exam-metrics > div {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--border-subtle);
+}
+
+.dashboard-exam-metrics small,
+.dashboard-exam-metrics strong {
+  display: block;
+}
+
+.dashboard-exam-metrics strong {
+  margin-top: 5px;
+  color: #334155;
+  font-size: 16px;
+}
+
+.dashboard-exam-toppers {
+  margin-top: 16px;
+}
+
+.dashboard-exam-toppers > strong {
+  color: #334155;
+  font-size: 13px;
+}
+
+.dashboard-exam-toppers > div b {
+  flex-shrink: 0;
+  color: #334155;
+  font-size: 13px;
+}
+
+.exam-grade-distribution {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.exam-grade-distribution span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 3px;
+  border-radius: var(--radius-sm);
+  background: var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.exam-grade-distribution strong {
+  color: var(--primary);
+}
+
+.exam-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.exam-col-rank {
+  width: 90px;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.exam-mark-input-dirty {
+  border-color: #334155 !important;
+  box-shadow: 0 0 0 2px rgba(51, 65, 85, 0.16);
+}
+
+.exam-mark-row-dirty {
+  background: rgba(51, 65, 85, 0.06);
+}
+
+.exam-marks-save-status {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.exam-mobile-report-btn {
+  display: none;
+}
+
+.exam-history-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.exam-history-table table,
+.exam-queue-table table {
+  min-width: 520px;
+}
+
+.exam-queue-footer {
+  flex-wrap: wrap;
+}
+
+.exam-institution-analysis {
+  margin-top: 20px;
+  padding: 18px;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.exam-analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.exam-analysis-grid > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+}
+
+.exam-analysis-grid > div > strong {
+  display: block;
+  margin-top: 6px;
+  color: #334155;
+  font-size: 22px;
+}
+
+.exam-top-scorers > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.exam-top-scorers > div:last-child {
+  border-bottom: 0;
+}
+
+.exam-top-scorers > div strong {
+  flex-shrink: 0;
+  color: #334155;
+  text-align: right;
+}
+
+.exam-institution-analysis .exam-grade-distribution {
+  align-self: start;
+}
+
 @media (max-width: 960px) {
   .dash-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-attendance-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dashboard-attendance-actions {
+    width: 100%;
+  }
+
+  .dashboard-attendance-mark {
+    flex: 1 1 0;
+  }
+
+  .dashboard-exam-metrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .exam-analysis-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .exam-top-scorers > div {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .exam-top-scorers > div strong {
+    text-align: left;
   }
 }
 
@@ -1181,6 +1632,11 @@ h5 {
     width: 31%;
   }
 
+  .exam-col-id { width: 15%; }
+  .exam-col-name { width: 29%; }
+  .exam-col-batch { width: 14%; }
+  .exam-col-rank { width: 12%; }
+
   .att-col-mobile-batch,
   .fee-col-batch,
   .exam-col-batch {
@@ -1212,6 +1668,15 @@ h5 {
     margin-top: 5px;
     padding: 4px 7px;
     font-size: 11px;
+  }
+
+  .exam-marks-table .exam-mobile-report-btn {
+    display: inline-flex;
+    flex-wrap: wrap;
+    margin-top: 5px;
+    padding: 4px 7px;
+    font-size: 11px;
+    white-space: normal;
   }
 
   .attendance-register-table .att-status-group {
@@ -1247,7 +1712,7 @@ h5 {
   }
 
   .exam-marks-table .exam-col-marks {
-    width: 32%;
+    width: 30%;
   }
 
   .exam-marks-table .mark-input {
@@ -1405,6 +1870,56 @@ tr:hover td {
   justify-content: flex-end;
   gap: 12px;
   background: var(--border-subtle);
+}
+
+.fee-payment-modal-footer {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.fee-payment-modal-footer .fee-modal-action {
+  flex: 1 1 135px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 10px 12px;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+}
+
+.fee-payment-modal-footer .fee-modal-action .icon {
+  flex: 0 0 16px;
+}
+
+.fee-processing-state {
+  min-height: 190px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.fee-processing-state strong {
+  color: var(--text);
+  font-size: 16px;
+}
+
+.fee-processing-spinner {
+  display: inline-flex;
+  width: 48px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--primary-container);
+  color: var(--primary);
+}
+
+.fee-processing-spinner .icon {
+  width: 26px;
+  height: 26px;
+  animation: spin 0.8s linear infinite;
 }
 
 .form-row {

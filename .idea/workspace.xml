@@ -4,11 +4,7 @@
     <option name="selectedModelId" value="auto" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="55046281-98fa-49bb-904a-362d7596f7a3" name="Changes" comment="version 3.4">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/attendance.js" beforeDir="false" afterPath="$PROJECT_DIR$/attendance.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles.css" afterDir="false" />
-    </list>
+    <list default="true" id="55046281-98fa-49bb-904a-362d7596f7a3" name="Changes" comment="version 3.5" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -141,7 +137,15 @@
       <option name="project" value="LOCAL" />
       <updated>1792838776549</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="version 3.5">
+      <option name="closed" value="true" />
+      <created>1792849912091</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1792849912091</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -154,6 +158,7 @@
     <MESSAGE value="version 3.1" />
     <MESSAGE value="version 3.2" />
     <MESSAGE value="version 3.4" />
-    <option name="LAST_COMMIT_MESSAGE" value="version 3.4" />
+    <MESSAGE value="version 3.5" />
+    <option name="LAST_COMMIT_MESSAGE" value="version 3.5" />
   </component>
 </project>

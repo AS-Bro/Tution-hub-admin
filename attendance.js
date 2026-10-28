@@ -7,6 +7,7 @@ let attState = {
   selectedBatch: 'ALL',
   selectedStudentId: null, // For calendar view - specific student to display
   localMarks: {}, // studentId -> status ('Present' | 'Absent' | 'Late')
+  dirtyMarks: {}, // Unsaved daily changes shown as a calendar preview
   viewMode: 'daily' // 'daily' or 'calendar'
 };
 
@@ -21,12 +22,15 @@ window.onSyncComplete = function () {
   renderAttendancePage();
 };
 
-function initAttendanceMarks() {
+function initAttendanceMarks(preserveChanges = false) {
+  const pendingMarks = preserveChanges ? { ...attState.dirtyMarks } : {};
   attState.localMarks = {};
   const existingForDate = STATE.attendance.filter(a => normalizeAttendanceDate(a.date) === attState.date);
   existingForDate.forEach(a => {
     attState.localMarks[a.studentId] = a.status;
   });
+  attState.dirtyMarks = preserveChanges ? pendingMarks : {};
+  Object.assign(attState.localMarks, pendingMarks);
 }
 
 function normalizeAttendanceDate(value) {
@@ -66,10 +70,17 @@ function renderAttendancePage() {
   if (!container) return;
 
   if (attState.viewMode === 'calendar') {
+    refreshAttendanceFromStorage();
+    initAttendanceMarks(true);
     renderCalendarView();
   } else {
     renderDailyView();
   }
+}
+
+function refreshAttendanceFromStorage() {
+  const latestAttendance = loadStorage(LS_KEYS.ATTENDANCE, []);
+  if (Array.isArray(latestAttendance)) STATE.attendance = latestAttendance;
 }
 
 function renderDailyView() {
@@ -299,6 +310,18 @@ function getStudentAttendanceForMonth(studentId, date) {
     const aDate = normalizeAttendanceDate(a.date);
     return a.studentId === studentId && aDate >= firstDay && aDate <= lastDay;
   });
+
+  if (attState.date >= firstDay && attState.date <= lastDay &&
+      Object.prototype.hasOwnProperty.call(attState.dirtyMarks, studentId)) {
+    const draft = {
+      studentId,
+      date: attState.date,
+      status: attState.dirtyMarks[studentId]
+    };
+    const existingIndex = records.findIndex(record => normalizeAttendanceDate(record.date) === attState.date);
+    if (existingIndex === -1) records.push(draft);
+    else records[existingIndex] = { ...records[existingIndex], ...draft };
+  }
 
   return records;
 }
@@ -551,7 +574,9 @@ function getStudentAttendanceStatusCompact(studentId, dateStr) {
     return { class: 'holiday', tooltip: 'Holiday' };
   }
 
-  const record = STATE.attendance.find(a => a.studentId === studentId && normalizeAttendanceDate(a.date) === dateStr);
+  const record = dateStr === attState.date && Object.prototype.hasOwnProperty.call(attState.dirtyMarks, studentId)
+    ? { status: attState.dirtyMarks[studentId] }
+    : STATE.attendance.find(a => a.studentId === studentId && normalizeAttendanceDate(a.date) === dateStr);
   if (!record) {
     return { class: 'not-marked', tooltip: 'Not marked' };
   }
@@ -637,6 +662,7 @@ function bindAttendanceEvents(filteredStudents) {
   if (bulkPresentBtn) {
     bulkPresentBtn.onclick = () => {
       filteredStudents.forEach(s => { attState.localMarks[s.studentId] = 'Present'; });
+      filteredStudents.forEach(s => { attState.dirtyMarks[s.studentId] = 'Present'; });
       renderAttendancePage();
     };
   }
@@ -645,6 +671,7 @@ function bindAttendanceEvents(filteredStudents) {
   if (bulkAbsentBtn) {
     bulkAbsentBtn.onclick = () => {
       filteredStudents.forEach(s => { attState.localMarks[s.studentId] = 'Absent'; });
+      filteredStudents.forEach(s => { attState.dirtyMarks[s.studentId] = 'Absent'; });
       renderAttendancePage();
     };
   }
@@ -654,6 +681,7 @@ function bindAttendanceEvents(filteredStudents) {
       const id = btn.dataset.id;
       const status = btn.dataset.status;
       attState.localMarks[id] = status;
+      attState.dirtyMarks[id] = status;
       renderAttendancePage();
     };
   });
@@ -663,7 +691,8 @@ function bindAttendanceEvents(filteredStudents) {
     saveBtn.onclick = async () => {
       /* Filter out old records for this date and batch, then append new ones */
       const studentIdsInBatch = new Set(filteredStudents.map(s => s.studentId));
-      STATE.attendance = STATE.attendance.filter(a => !(a.date === attState.date && studentIdsInBatch.has(a.studentId)));
+      STATE.attendance = STATE.attendance.filter(a =>
+        !(normalizeAttendanceDate(a.date) === attState.date && studentIdsInBatch.has(a.studentId)));
 
       const newRecords = [];
       filteredStudents.forEach(s => {
@@ -681,6 +710,7 @@ function bindAttendanceEvents(filteredStudents) {
       });
 
       saveStorage(LS_KEYS.ATTENDANCE, STATE.attendance);
+      studentIdsInBatch.forEach(studentId => { delete attState.dirtyMarks[studentId]; });
       showToast('success', `Attendance saved for ${formatDate(attState.date)}`);
       renderAttendancePage();
 
@@ -725,6 +755,10 @@ function bindAttendanceEvents(filteredStudents) {
    $all('.att-view-btn').forEach(btn => {
      btn.onclick = () => {
        attState.viewMode = btn.dataset.view;
+       if (attState.viewMode === 'calendar') {
+         refreshAttendanceFromStorage();
+         initAttendanceMarks(true);
+       }
        renderAttendancePage();
      };
    });
