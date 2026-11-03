@@ -229,22 +229,22 @@ function renderBrandingTab(s) {
           <label>Center Logo</label>
           <div class="logo-preview-container">
             <div class="logo-preview-box" id="st-logo-preview">
-              ${s.logoUrl ? `<img src="${escapeHtml(s.logoUrl)}" alt="Center Logo">` : `<span style="font-size:11px;color:var(--text-muted);text-align:center">No Logo</span>`}
+              ${s.tuitionLogo || s.logoUrl ? `<img src="${escapeHtml(s.tuitionLogo || s.logoUrl)}" alt="Center Logo">` : `<span style="font-size:11px;color:var(--text-muted);text-align:center">No Logo</span>`}
             </div>
             <div style="display:flex;flex-direction:column;gap:8px;flex:1">
               <label class="btn btn-outline btn-sm" style="cursor:pointer;width:fit-content">
                 <i data-lucide="upload" class="icon"></i> Upload Logo Image
-                <input type="file" id="st-logo-file" accept="image/*" style="display:none">
+                <input type="file" id="st-tuition-logo-file" accept="image/*" style="display:none">
               </label>
-              ${s.logoUrl ? `
-                <button type="button" class="btn btn-danger btn-sm" id="remove-logo-btn" style="width:fit-content">
+              ${s.tuitionLogo || s.logoUrl ? `
+                <button type="button" class="btn btn-danger btn-sm" id="remove-tuition-logo-btn" style="width:fit-content">
                   <i data-lucide="trash-2" class="icon"></i> Remove Logo
                 </button>
               ` : ''}
-              <span style="font-size:11.5px;color:var(--text-secondary)">Recommended: PNG or JPEG up to 2MB</span>
+              <span style="font-size:11.5px;color:var(--text-secondary)">Recommended: PNG or JPEG. Images are resized for Google Sheets storage.</span>
             </div>
           </div>
-          <input type="text" id="st-logo-url" value="${escapeHtml(s.logoUrl || '')}" placeholder="Or paste Logo Image URL (https://... or data:image/...)">
+          <input type="text" id="st-logo-url" value="${escapeHtml(s.logoUrl && !String(s.logoUrl).startsWith('data:') ? s.logoUrl : '')}" placeholder="Or paste Logo Image URL (https://...)">
         </div>
 
         <div class="form-grid-2">
@@ -487,20 +487,34 @@ function renderReceiptTab(s, rec) {
         <div class="form-row">
           <label>Visual Receipt Preview</label>
           <div class="receipt-preview-card" id="receipt-live-preview">
-            <div class="receipt-preview-header">
-              <strong style="color:var(--primary);font-size:14px">${escapeHtml(s.tuitionName || 'Tuition Center')}</strong>
-              <span style="font-size:11px;color:var(--text-secondary)">A5 Portrait</span>
+            <div class="receipt-preview-paper">
+              <div class="receipt-preview-institute">
+                <img id="prev-rc-logo" src="${escapeHtml(s.tuitionLogo || s.logoUrl || '')}" alt="Center logo" style="${rec.showLogo !== false && (s.tuitionLogo || s.logoUrl) ? '' : 'display:none'}">
+                <strong>${escapeHtml(s.tuitionName || 'Tution Hub')}</strong>
+              </div>
+              <h4 class="receipt-preview-title" id="prev-rc-title">${escapeHtml(title)}</h4>
+              <div class="receipt-preview-details">
+                <div class="receipt-preview-detail"><span>Receipt No</span><strong id="prev-rc-number">${escapeHtml(prefix)}123456</strong></div>
+                <div class="receipt-preview-detail" data-preview-field="date" style="${rec.showPaymentDate === false ? 'display:none' : ''}"><span>Payment Date</span><strong>${formatDate(todayISO())}</strong></div>
+                <div class="receipt-preview-detail" data-preview-field="student-id" style="${rec.showStudentId === false ? 'display:none' : ''}"><span>Student ID</span><strong>ST-1001</strong></div>
+                <div class="receipt-preview-detail"><span>Fee Month</span><strong>${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</strong></div>
+                <div class="receipt-preview-detail"><span>Student Name</span><strong>Demo Student</strong></div>
+                <div class="receipt-preview-detail" data-preview-field="parent" style="${rec.showParentDetails === false ? 'display:none' : ''}"><span>Parent</span><strong>Demo Parent</strong></div>
+                <div class="receipt-preview-detail"><span>Batch / Class</span><strong>Grade 10</strong></div>
+              </div>
+              <table class="receipt-preview-table">
+                <thead><tr><th>Sl.No</th><th>Description</th><th>Amount Paid</th></tr></thead>
+                <tbody>
+                  <tr><td>1</td><td>Tuition Fee - ${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</td><td class="receipt-preview-amount">${escapeHtml(formatCurrency(1000))}</td></tr>
+                  <tr class="receipt-preview-total"><td colspan="2">Total</td><td class="receipt-preview-amount">${escapeHtml(formatCurrency(1000))}</td></tr>
+                </tbody>
+              </table>
+              <div class="receipt-preview-mode"><strong>Payment Mode:</strong> <span>UPI</span></div>
+              <footer class="receipt-preview-footer">
+                <strong id="prev-rc-footer">${escapeHtml(footer)}</strong>
+                <span>This is a computer-generated receipt.</span>
+              </footer>
             </div>
-            <div style="font-weight:700;font-size:13px;margin-bottom:8px" id="prev-rc-title">${escapeHtml(title)}</div>
-            <div style="font-size:11.5px;color:var(--text-secondary);margin-bottom:12px">
-              <div>Receipt No: <strong>${escapeHtml(prefix)}123456</strong></div>
-              <div>Date: ${new Date().toLocaleDateString()}</div>
-            </div>
-            <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-size:12px;margin-bottom:12px">
-              <div>Student: <strong>Demo Student</strong> (Grade 10)</div>
-              <div>Amount: <strong style="color:var(--success)">${s.currency || '₹'}1,000</strong></div>
-            </div>
-            <div style="font-size:11px;color:var(--text-muted);text-align:center" id="prev-rc-footer">${escapeHtml(footer)}</div>
           </div>
         </div>
 
@@ -930,6 +944,7 @@ function bindAppearanceEvents() {
       if (!STATE.settings.appearance) STATE.settings.appearance = {};
       STATE.settings.appearance.accentColor = hex;
       applyAppearanceSettings();
+      persistAppearanceSettings();
       renderSettingsPage();
     };
   });
@@ -942,6 +957,7 @@ function bindAppearanceEvents() {
       if (!STATE.settings.appearance) STATE.settings.appearance = {};
       STATE.settings.appearance.accentColor = e.target.value;
       applyAppearanceSettings();
+      persistAppearanceSettings();
     };
     hexInput.onchange = (e) => {
       let val = e.target.value.trim();
@@ -950,6 +966,7 @@ function bindAppearanceEvents() {
       if (!STATE.settings.appearance) STATE.settings.appearance = {};
       STATE.settings.appearance.accentColor = val;
       applyAppearanceSettings();
+      persistAppearanceSettings();
     };
   }
 
@@ -960,6 +977,7 @@ function bindAppearanceEvents() {
       if (!STATE.settings.appearance) STATE.settings.appearance = {};
       STATE.settings.appearance.theme = themeVal;
       applyTheme(themeVal);
+      persistAppearanceSettings();
       renderSettingsPage();
     };
   });
@@ -971,6 +989,7 @@ function bindAppearanceEvents() {
       if (!STATE.settings.appearance) STATE.settings.appearance = {};
       STATE.settings.appearance.density = densityVal;
       applyAppearanceSettings();
+      persistAppearanceSettings();
       renderSettingsPage();
     };
   });
@@ -978,43 +997,61 @@ function bindAppearanceEvents() {
   const saveAppBtn = $('#save-appearance-btn');
   if (saveAppBtn) {
     saveAppBtn.onclick = () => {
-      saveStorage(LS_KEYS.SETTINGS, STATE.settings);
+      persistAppearanceSettings();
       showToast('success', 'Appearance preferences saved!');
     };
   }
 }
 
+function persistAppearanceSettings() {
+  saveStorage(LS_KEYS.SETTINGS, STATE.settings);
+}
+
 function bindBrandingEvents() {
-  const logoFileInput = $('#st-logo-file');
-  if (logoFileInput) {
-    logoFileInput.onchange = (e) => {
-      const file = e.target.files[0];
+  const tuitionLogoInput = $('#st-tuition-logo-file');
+  if (tuitionLogoInput) {
+    tuitionLogoInput.onchange = async (e) => {
+      const file = e.target.files && e.target.files[0];
       if (!file) return;
-      if (file.size > 2 * 1024 * 1024) {
-        showToast('warning', 'Please select an image smaller than 2MB');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const base64Url = evt.target.result;
-        STATE.settings.logoUrl = base64Url;
-        saveStorage(LS_KEYS.SETTINGS, STATE.settings);
-        showToast('success', 'Logo updated successfully!');
+      let saveStarted = false;
+      try {
+        const tuitionLogo = await compressTuitionLogo(file);
+        saveStarted = true;
+        await saveTuitionLogo(tuitionLogo);
+        showToast('success', 'Center logo saved.');
         injectShellLayout('settings', 'Settings Center');
         renderSettingsPage();
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        if (saveStarted) {
+          injectShellLayout('settings', 'Settings Center');
+          renderSettingsPage();
+          showToast('warning', `Logo is saved locally, but Google Sheets sync failed: ${error.message || 'unknown error'}`);
+        } else {
+          showToast('error', error.message || 'The center logo could not be saved.');
+        }
+      }
     };
   }
 
-  const removeLogoBtn = $('#remove-logo-btn');
-  if (removeLogoBtn) {
-    removeLogoBtn.onclick = () => {
-      STATE.settings.logoUrl = '';
-      saveStorage(LS_KEYS.SETTINGS, STATE.settings);
-      showToast('info', 'Logo removed');
-      injectShellLayout('settings', 'Settings Center');
-      renderSettingsPage();
+  const removeTuitionLogoBtn = $('#remove-tuition-logo-btn');
+  if (removeTuitionLogoBtn) {
+    removeTuitionLogoBtn.onclick = async () => {
+      let saveStarted = false;
+      try {
+        saveStarted = true;
+        await saveTuitionLogo('');
+        showToast('info', 'Center logo removed.');
+        injectShellLayout('settings', 'Settings Center');
+        renderSettingsPage();
+      } catch (error) {
+        if (saveStarted) {
+          injectShellLayout('settings', 'Settings Center');
+          renderSettingsPage();
+          showToast('warning', `Logo removal is saved locally, but Google Sheets sync failed: ${error.message || 'unknown error'}`);
+        } else {
+          showToast('error', error.message || 'The center logo could not be removed.');
+        }
+      }
     };
   }
 
@@ -1022,7 +1059,11 @@ function bindBrandingEvents() {
   if (saveBrandingBtn) {
     saveBrandingBtn.onclick = async () => {
       STATE.settings.tuitionName = $('#st-tuition-name').value.trim() || 'Tuition Center';
-      STATE.settings.logoUrl = $('#st-logo-url').value.trim();
+      const logoUrl = $('#st-logo-url').value.trim();
+      if (logoUrl) {
+        STATE.settings.logoUrl = logoUrl;
+        STATE.settings.tuitionLogo = logoUrl;
+      }
       STATE.settings.teacherName = $('#st-teacher-name').value.trim();
       STATE.settings.email = $('#st-email').value.trim();
       STATE.settings.teacherPhone = $('#st-teacher-phone').value.trim();
@@ -1042,6 +1083,56 @@ function bindBrandingEvents() {
       }
     };
   }
+}
+
+function saveTuitionLogo(logoData) {
+  STATE.settings.tuitionLogo = logoData;
+  if (!logoData) STATE.settings.logoUrl = '';
+  saveStorage(LS_KEYS.SETTINGS, STATE.settings);
+  if (!window.apiRequest) return Promise.resolve();
+  return window.apiRequest('saveSettings', { settings: { tuitionLogo: logoData } });
+}
+
+function compressTuitionLogo(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read the selected image.'));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error('The selected file is not a valid image.'));
+      image.onload = () => {
+        if (!image.naturalWidth || !image.naturalHeight) {
+          reject(new Error('The selected image has invalid dimensions.'));
+          return;
+        }
+        let scale = Math.min(1, 320 / Math.max(image.naturalWidth, image.naturalHeight));
+        while (scale >= 0.005) {
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+          canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+          const context = canvas.getContext('2d');
+          if (!context) {
+            reject(new Error('Image compression is not supported by this browser.'));
+            return;
+          }
+          context.fillStyle = '#ffffff';
+          context.fillRect(0, 0, canvas.width, canvas.height);
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+          for (const quality of [0.82, 0.68, 0.54, 0.4]) {
+            const dataUrl = canvas.toDataURL('image/jpeg', quality);
+            if (dataUrl.length <= 45000) {
+              resolve(dataUrl);
+              return;
+            }
+          }
+          scale *= 0.75;
+        }
+        reject(new Error('This image cannot be compressed enough for Google Sheets storage. Choose a simpler or smaller image.'));
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 function bindFeesEvents() {
@@ -1131,6 +1222,37 @@ function bindReceiptEvents() {
       if (el) el.textContent = e.target.value.trim() || 'Thank you for your payment!';
     };
   }
+
+  const updatePreviewFields = () => {
+    const visibility = {
+      logo: $('#rc-show-logo') && $('#rc-show-logo').checked,
+      'student-id': $('#rc-show-id') && $('#rc-show-id').checked,
+      parent: $('#rc-show-parent') && $('#rc-show-parent').checked,
+      date: $('#rc-show-date') && $('#rc-show-date').checked
+    };
+    Object.entries(visibility).forEach(([field, visible]) => {
+      const element = $(`[data-preview-field="${field}"]`);
+      if (element) element.style.display = visible ? '' : 'none';
+    });
+    const logo = $('#prev-rc-logo');
+    if (logo) {
+      const logoUrl = STATE.settings.tuitionLogo || STATE.settings.logoUrl;
+      logo.src = logoUrl || '';
+      logo.style.display = visibility.logo && logoUrl ? '' : 'none';
+    }
+    const title = $('#prev-rc-title');
+    if (title && titleInput) title.textContent = titleInput.value.trim() || 'FEE PAYMENT RECEIPT';
+    const footer = $('#prev-rc-footer');
+    if (footer && footerInput) footer.textContent = footerInput.value.trim() || 'Thank you for your payment!';
+    const previewReceiptNo = $('#prev-rc-number');
+    if (previewReceiptNo) previewReceiptNo.textContent = `${$('#rc-prefix').value.trim() || 'REC-'}123456`;
+  };
+  ['rc-show-logo', 'rc-show-id', 'rc-show-parent', 'rc-show-date'].forEach(id => {
+    const input = $('#' + id);
+    if (input) input.onchange = updatePreviewFields;
+  });
+  const prefixInput = $('#rc-prefix');
+  if (prefixInput) prefixInput.oninput = updatePreviewFields;
 
   const saveBtn = $('#save-receipt-settings-btn');
   if (saveBtn) {

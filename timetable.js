@@ -18,17 +18,17 @@ function renderTimetablePage() {
   const container = $('#page-content');
   if (!container) return;
 
-  const batches = Array.from(new Set(STATE.schedule.map(s => s.batch).filter(Boolean)));
+  const classes = getStudentClasses();
 
   let filtered = STATE.schedule.filter(sc => {
-    return !timetableBatchFilter || sc.batch === timetableBatchFilter;
+    return !timetableBatchFilter || normalizeTimetableClass(sc.batch) === normalizeTimetableClass(timetableBatchFilter);
   });
 
   container.innerHTML = `
     <div class="section-head">
       <div>
         <h2>Class Timetable & Slot Matrix</h2>
-        <div class="section-sub">Organize batch timings, subjects, online classes, and schedule</div>
+        <div class="section-sub">Organize class timings, subjects, online classes, and schedules</div>
       </div>
       <div style="display:flex;gap:10px">
         <button class="btn btn-secondary btn-sm" id="launch-online-class-btn">
@@ -43,8 +43,8 @@ function renderTimetablePage() {
     <!-- TOOLBAR -->
     <div class="toolbar">
       <select class="select-filter" id="tt-batch-filter">
-        <option value="">All Batches</option>
-        ${batches.map(b => `<option value="${escapeHtml(b)}" ${timetableBatchFilter === b ? 'selected' : ''}>${escapeHtml(b)}</option>`).join('')}
+        <option value="">All Classes</option>
+        ${classes.map(className => `<option value="${escapeHtml(className)}" ${normalizeTimetableClass(timetableBatchFilter) === normalizeTimetableClass(className) ? 'selected' : ''}>${escapeHtml(className)}</option>`).join('')}
       </select>
       <button class="btn btn-outline btn-sm" id="broadcast-schedule-wa-btn">
         <i data-lucide="message-square" class="icon" style="color:var(--success)"></i> Broadcast Schedule via WhatsApp
@@ -56,7 +56,7 @@ function renderTimetablePage() {
       <div class="card empty-state">
         <div class="emoji">📅</div>
         <h4>No timetable entries found</h4>
-        <p>Add class slots for your batches to build the weekly schedule.</p>
+        <p>Add class slots for your students to build the weekly schedule.</p>
         <button class="btn btn-primary btn-sm" id="empty-slot-btn">Add First Slot</button>
       </div>
     ` : `
@@ -67,7 +67,7 @@ function renderTimetablePage() {
             <div class="card" style="display:flex;flex-direction:column;gap:12px;position:relative">
               <div style="display:flex;justify-content:space-between;align-items:flex-start">
                 <div>
-                  <span class="badge badge-blue">${escapeHtml(sc.batch)}</span>
+                  <span class="badge badge-blue">Class: ${escapeHtml(sc.batch)}</span>
                   <h3 style="font-size:18px;margin-top:6px">${escapeHtml(sc.subject)}</h3>
                 </div>
                 <div style="display:flex;gap:4px">
@@ -166,7 +166,7 @@ function bindTimetableEvents() {
     broadcastBtn.onclick = () => {
       let msg = `📅 *Tuition Class Timetable (${STATE.settings.tuitionName || 'Tuition Center'})*\n\n`;
       STATE.schedule.forEach(sc => {
-        msg += `• *${sc.subject}* (${sc.batch})\n  ⏰ ${sc.time} | 🗓️ ${sc.days}\n  👨‍🏫 ${sc.teacher || 'Tutor'}\n`;
+        msg += `• *${sc.subject}* (Class: ${sc.batch})\n  ⏰ ${sc.time} | 🗓️ ${sc.days}\n  👨‍🏫 ${sc.teacher || 'Tutor'}\n`;
         if (sc.room && sc.room.startsWith('http')) {
           msg += `  🎥 Online Class Available\n`;
         }
@@ -205,10 +205,23 @@ function launchFirstAvailableLink() {
   window.open(firstLink, '_blank');
 }
 
+function getStudentClasses() {
+  const classes = new Map();
+  (Array.isArray(STATE.students) ? STATE.students : []).forEach(student => {
+    const className = String(student && student.batch || '').trim();
+    const key = normalizeTimetableClass(className);
+    if (key && !classes.has(key)) classes.set(key, className);
+  });
+  return Array.from(classes.values()).sort((a, b) => a.localeCompare(b));
+}
+
+function normalizeTimetableClass(value) {
+  return String(value || '').trim().toLocaleLowerCase();
+}
+
 function openSlotModal(slot = null) {
   const isEdit = !!slot;
-  const batches = Array.from(new Set(STATE.students.map(s => s.batch).filter(Boolean)));
-  if (batches.length === 0) batches.push('Grade 10', 'Grade 12');
+  const classes = getStudentClasses();
   const defaults = getTimetableDefaults();
   const defaultValue = (key, fallback) =>
     Object.prototype.hasOwnProperty.call(defaults, key) ? defaults[key] : fallback;
@@ -225,8 +238,11 @@ function openSlotModal(slot = null) {
           <input type="text" id="sm-subject" value="${escapeHtml(slot ? slot.subject : defaultValue('subject', ''))}" placeholder="e.g. Mathematics" required>
         </div>
         <div class="form-row">
-          <label>Batch / Grade</label>
-          <input type="text" id="sm-batch" value="${escapeHtml(slot ? slot.batch : defaultValue('batch', batches[0]))}" placeholder="e.g. Grade 10" required>
+          <label>Class</label>
+          <input type="text" id="sm-batch" value="${escapeHtml(slot ? slot.batch : defaultValue('batch', classes[0] || ''))}" placeholder="e.g. Class 10" list="student-class-options" required>
+          <datalist id="student-class-options">
+            ${classes.map(className => `<option value="${escapeHtml(className)}"></option>`).join('')}
+          </datalist>
         </div>
       </div>
 

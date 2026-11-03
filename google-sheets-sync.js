@@ -77,19 +77,19 @@ async function apiRequest(action, payload = {}) {
 async function fetchGoogleSheetsData() {
   if (!getGasUrl()) {
     console.warn('Google Sheets fee data was not fetched because no Web App URL is configured.');
-    return;
+    return false;
   }
   try {
     const res = await apiRequest('getInitialData');
     if (!res) {
       console.warn('Google Sheets returned an empty initial-data response.');
-      return;
+      return false;
     }
 
     const data = getGoogleSheetsInitialData(res);
     if (!data || typeof data !== 'object') {
       console.warn('Google Sheets returned invalid initial data.');
-      return;
+      return false;
     }
 
     if (Array.isArray(data.students) && data.students.length > 0) { STATE.students = data.students; saveStorage(LS_KEYS.STUDENTS, STATE.students); }
@@ -117,6 +117,7 @@ async function fetchGoogleSheetsData() {
     if (data.examMarks && typeof data.examMarks === 'object') { STATE.examMarks = data.examMarks; saveStorage(LS_KEYS.EXAM_MARKS, STATE.examMarks); }
     if (Array.isArray(data.notices)) { STATE.notices = data.notices; saveStorage(LS_KEYS.NOTICES, STATE.notices); }
     if (Array.isArray(data.schedule)) { STATE.schedule = data.schedule; saveStorage(LS_KEYS.SCHEDULE, STATE.schedule); }
+    if (Array.isArray(data.materials)) { STATE.materials = data.materials; saveStorage(LS_KEYS.MATERIALS, STATE.materials); }
     if (data.settings && typeof data.settings === 'object' && Object.keys(data.settings).length > 0) {
       // Deep-merge settings to avoid overwriting nested preference objects like appearance
       STATE.settings = Object.assign({}, STATE.settings, data.settings, {
@@ -127,6 +128,7 @@ async function fetchGoogleSheetsData() {
         academicSettings: Object.assign({}, STATE.settings.academicSettings || {}, data.settings.academicSettings || {})
       });
       saveStorage(LS_KEYS.SETTINGS, STATE.settings);
+      if (typeof updateShellBranding === 'function') updateShellBranding();
       // Re-apply theme and appearance so UI remains consistent after sync
       try {
         const themeToApply = (STATE.settings.appearance && STATE.settings.appearance.theme) || STATE.theme || 'light';
@@ -136,8 +138,10 @@ async function fetchGoogleSheetsData() {
     }
     showToast('success', 'Google Sheets data synced successfully');
     if (window.onSyncComplete) window.onSyncComplete();
+    return true;
   } catch (e) {
     console.error('Failed to fetch initial data from Google Sheets:', e);
+    return false;
   }
 }
 
@@ -183,7 +187,10 @@ function isGoogleSheetFeeLedgerMap(value) {
   return entries.some(([key, record]) => {
     if (!record || typeof record !== 'object' || Array.isArray(record) || !parseGoogleSheetFeeCompositeKey(key)) return false;
     const fields = Object.keys(record).map(field => field.toLowerCase().replace(/[^a-z0-9]/g, ''));
-    return fields.some(field => ['amount', 'amountpaid', 'paidamount', 'status', 'paymentstatus', 'paymentmethod'].includes(field));
+    return fields.some(field => [
+      'amount', 'amountpaid', 'paidamount', 'transactionamount', 'feeamountpaid',
+      'expectedamount', 'amountdue', 'status', 'paymentstatus', 'paymentmethod'
+    ].includes(field));
   });
 }
 
@@ -227,7 +234,7 @@ function isFeeHeaderRow(row) {
   const headers = row.map(value => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, ''));
   const hasStudent = headers.some(value => ['studentid', 'student', 'admissionid', 'admissionnumber'].includes(value));
   const hasPeriod = headers.some(value =>
-    ['month', 'feemonth', 'paymentmonth', 'period', 'selectedperiod', 'feeperiod', 'periodkey', 'billingperiod', 'monthyear'].includes(value)
+    ['month', 'feemonth', 'paymentmonth', 'paymentmonthperiod', 'period', 'selectedperiod', 'feeperiod', 'periodkey', 'billingperiod', 'monthyear'].includes(value)
   );
   return hasStudent && hasPeriod;
 }
@@ -255,11 +262,14 @@ function normalizeGoogleSheetFeeRecord(record, sourceKey = '', headers = null) {
   };
   const compositeKey = String(getValue('compositeKey', 'paymentKey', 'ledgerKey', 'studentMonthKey', 'studentPeriodKey', 'studentMonth', 'studentPeriod', 'key', 'recordKey') || sourceKey || '');
   const compositeParts = parseGoogleSheetFeeCompositeKey(compositeKey);
-  const dateValue = getValue('date', 'datePaid', 'paymentDate', 'paidDate', 'transactionDate');
-  const amountValue = getValue('amount', 'amountPaid', 'paidAmount', 'feeAmountPaid', 'collectedAmount', 'amountCollected', 'paymentAmount');
+  const dateValue = getValue('date', 'datePaid', 'paymentDate', 'dateOfPayment', 'paidDate', 'transactionDate');
+  const transactionAmountValue = getValue('transactionAmount', 'lastPaymentAmount', 'paymentTransactionAmount');
+  const amountValue = getValue('amount', 'amountPaid', 'paidAmount', 'feeAmountPaid', 'collectedAmount', 'amountCollected', 'paymentAmount', 'paid') || transactionAmountValue;
   const amount = typeof amountValue === 'number'
     ? amountValue
     : Number(String(amountValue).replace(/[^0-9.-]/g, '')) || 0;
+  const baseAmountValue = getValue('baseAmount', 'monthlyAmount', 'monthlyFee', 'feeAmount', 'baseFee');
+  const expectedAmountValue = getValue('expectedAmount', 'amountDue', 'totalDue', 'totalAmountDue', 'totalAmount', 'feeExpectedAmount');
   const rawStatus = String(getValue('status', 'paymentStatus', 'feeStatus') || '').trim().toLowerCase();
   const status = ['paid', 'complete', 'completed', 'received', 'success', 'successful'].includes(rawStatus)
     ? 'Paid'
@@ -271,8 +281,11 @@ function normalizeGoogleSheetFeeRecord(record, sourceKey = '', headers = null) {
     studentId: String(getValue('studentId', 'studentID', 'student_id', 'student', 'admissionId', 'admissionNumber') || (compositeParts && compositeParts.studentId) || '').trim(),
     studentName: String(getValue('studentName', 'name') || ''),
     batch: String(getValue('batch', 'grade', 'class') || ''),
-    month: normalizeGoogleSheetFeeMonth(getValue('month', 'feeMonth', 'paymentMonth', 'period', 'selectedPeriod', 'feePeriod', 'periodKey', 'billingPeriod', 'monthYear') || (compositeParts && compositeParts.month) || dateValue),
+    month: normalizeGoogleSheetFeeMonth(getValue('month', 'feeMonth', 'paymentMonth', 'paymentMonthPeriod', 'period', 'selectedPeriod', 'feePeriod', 'periodKey', 'billingPeriod', 'monthYear') || (compositeParts && compositeParts.month) || dateValue),
     amount,
+    transactionAmount: Number(String(transactionAmountValue || '').replace(/[^0-9.-]/g, '')) || 0,
+    baseAmount: Number(String(baseAmountValue || '').replace(/[^0-9.-]/g, '')) || 0,
+    expectedAmount: Number(String(expectedAmountValue || '').replace(/[^0-9.-]/g, '')) || 0,
     date: normalizeGoogleSheetFeeDate(dateValue),
     paymentMode: String(getValue('paymentMode', 'mode', 'paymentMethod') || 'Cash'),
     status
@@ -349,13 +362,54 @@ function normalizeGoogleSheetFeeDate(value) {
 }
 
 window.apiRequest = apiRequest;
-window.triggerGoogleSheetsSync = function () {
-  fetchGoogleSheetsData();
+window.triggerGoogleSheetsSync = async function () {
+  const synced = await fetchGoogleSheetsData();
+  if (synced) markInitialGoogleSheetsSyncComplete();
+  return synced;
 };
 
-/* Auto-sync on page load if GAS URL is configured */
-document.addEventListener('DOMContentLoaded', () => {
-  if (getGasUrl()) {
-    fetchGoogleSheetsData();
+const INITIAL_SYNC_COMPLETE_KEY = 'th_initial_google_sheets_sync_complete';
+const INITIAL_SYNC_PENDING_KEY = 'th_initial_google_sheets_sync_pending';
+
+function markInitialGoogleSheetsSyncComplete() {
+  try {
+    sessionStorage.setItem(INITIAL_SYNC_COMPLETE_KEY, '1');
+    sessionStorage.removeItem(INITIAL_SYNC_PENDING_KEY);
+  } catch (error) {
+    console.warn('Unable to persist initial sync state for this browser tab.', error);
   }
+}
+
+/* Load remote data once per browser tab session; subsequent page navigations use local state. */
+document.addEventListener('DOMContentLoaded', () => {
+  if (!getGasUrl()) return;
+
+  try {
+    if (sessionStorage.getItem(INITIAL_SYNC_COMPLETE_KEY) === '1' ||
+        sessionStorage.getItem(INITIAL_SYNC_PENDING_KEY) === '1') return;
+    sessionStorage.setItem(INITIAL_SYNC_PENDING_KEY, '1');
+  } catch (error) {
+    console.warn('Unable to persist initial sync state; attempting the initial remote fetch once for this page.', error);
+    fetchGoogleSheetsData();
+    return;
+  }
+
+  window.addEventListener('pagehide', () => {
+    try {
+      if (sessionStorage.getItem(INITIAL_SYNC_COMPLETE_KEY) !== '1') {
+        sessionStorage.removeItem(INITIAL_SYNC_PENDING_KEY);
+      }
+    } catch (error) {
+      console.warn('Unable to clear pending initial sync state.', error);
+    }
+  }, { once: true });
+
+  fetchGoogleSheetsData().then(synced => {
+    if (synced) markInitialGoogleSheetsSyncComplete();
+    else {
+      try { sessionStorage.removeItem(INITIAL_SYNC_PENDING_KEY); } catch (error) {
+        console.warn('Unable to clear failed initial sync state.', error);
+      }
+    }
+  });
 });

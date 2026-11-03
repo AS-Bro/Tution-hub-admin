@@ -13,6 +13,7 @@ const LS_KEYS = {
   STUDENTS: 'th_students',
   ATTENDANCE: 'th_attendance',
   FEES: 'th_fees',
+  MATERIALS: 'th_materials',
   STUDENT_SESSION: 'th_student_session'
 };
 
@@ -20,6 +21,7 @@ const DEFAULT_SETTINGS = {
   gasUrl: 'https://script.google.com/macros/s/AKfycbxwQ6DxfQYFTfraO5XtrLrT1IpsvRQv3jHlkmeDmLadMErSbfxJI2pQf_lLmlST8uA/exec',
   tuitionName: 'TuitionHub Center',
   logoUrl: '',
+  tuitionLogo: '',
   teacherName: 'Prof. Abc',
   currency: '₹',
   dateFormat: 'DD/MM/YYYY',
@@ -151,6 +153,7 @@ const STATE = {
   students: loadStorage(LS_KEYS.STUDENTS, DEFAULT_STUDENTS),
   attendance: loadStorage(LS_KEYS.ATTENDANCE, []),
   fees: loadStorage(LS_KEYS.FEES, []),
+  materials: loadStorage(LS_KEYS.MATERIALS, []),
   syncStatus: 'offline',
   theme: localStorage.getItem(LS_KEYS.THEME) || 'light'
 };
@@ -168,6 +171,7 @@ function saveAllState() {
   saveStorage(LS_KEYS.STUDENTS, STATE.students);
   saveStorage(LS_KEYS.ATTENDANCE, STATE.attendance);
   saveStorage(LS_KEYS.FEES, STATE.fees);
+  saveStorage(LS_KEYS.MATERIALS, STATE.materials);
 }
 
 /* Helper Utility Functions */
@@ -316,8 +320,9 @@ function injectShellLayout(activePageKey, pageTitle) {
 
   const tuitionName = STATE.settings.tuitionName || 'TuitionHub Center';
   const logoText = tuitionName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'TH';
-  const logoMarkup = STATE.settings.logoUrl
-    ? `<img src="${escapeHtml(STATE.settings.logoUrl)}" alt="Logo" class="sidebar-custom-logo" />`
+  const centerLogo = STATE.settings.tuitionLogo || STATE.settings.logoUrl;
+  const logoMarkup = centerLogo
+    ? `<img src="${escapeHtml(centerLogo)}" alt="${escapeHtml(tuitionName)} logo" class="sidebar-custom-logo" />`
     : `<span>${escapeHtml(logoText)}</span>`;
 
   app.innerHTML = `
@@ -326,7 +331,7 @@ function injectShellLayout(activePageKey, pageTitle) {
     <!-- SIDEBAR -->
     <aside id="sidebar">
       <div class="sidebar-brand">
-        <div class="logo-mark" id="sidebar-logo-mark" style="${STATE.settings.logoUrl ? 'background:transparent;padding:0;' : ''}">${logoMarkup}</div>
+        <div class="logo-mark" id="sidebar-logo-mark" style="${centerLogo ? 'background:transparent;padding:0;' : ''}">${logoMarkup}</div>
         <span class="brand-text" id="sidebar-brand-name">${escapeHtml(tuitionName)}</span>
         <button class="collapse-btn" id="collapse-btn" title="Collapse"><i data-lucide="panel-left-close" class="icon"></i></button>
       </div>
@@ -337,6 +342,7 @@ function injectShellLayout(activePageKey, pageTitle) {
         <a class="nav-item ${activePageKey === 'fee' ? 'active' : ''}" href="fee.html"><i data-lucide="wallet" class="icon"></i><span class="nav-label">Fee Management</span></a>
         <a class="nav-item ${activePageKey === 'exams' ? 'active' : ''}" href="exams-and-marks.html"><i data-lucide="award" class="icon"></i><span class="nav-label">Exams & Marks</span></a>
         <a class="nav-item ${activePageKey === 'timetable' ? 'active' : ''}" href="timetable.html"><i data-lucide="calendar-clock" class="icon"></i><span class="nav-label">Schedule & Timetable</span></a>
+        <a class="nav-item ${activePageKey === 'materials' ? 'active' : ''}" href="materials.html"><i data-lucide="book-open" class="icon"></i><span class="nav-label">Materials</span></a>
         <a class="nav-item ${activePageKey === 'notice' ? 'active' : ''}" href="notice.html"><i data-lucide="megaphone" class="icon"></i><span class="nav-label">Notice Board</span></a>
         <a class="nav-item ${activePageKey === 'settings' ? 'active' : ''}" href="settings.html"><i data-lucide="settings" class="icon"></i><span class="nav-label">Settings</span></a>
       </nav>
@@ -350,6 +356,7 @@ function injectShellLayout(activePageKey, pageTitle) {
       <header id="header">
         <div class="header-left">
           <button class="mobile-menu-btn" id="mobile-menu-btn"><i data-lucide="menu" class="icon"></i></button>
+          <div class="header-logo-mark ${centerLogo ? 'has-image' : ''}">${logoMarkup}</div>
           <div class="header-titles">
             <div class="tuition-name">${escapeHtml(tuitionName)}</div>
             <div class="page-title">${escapeHtml(pageTitle)}</div>
@@ -359,7 +366,7 @@ function injectShellLayout(activePageKey, pageTitle) {
           <button class="icon-btn" id="theme-toggle-btn" title="Toggle Theme"><i data-lucide="${STATE.theme === 'dark' ? 'sun' : 'moon'}" class="icon" id="theme-icon"></i></button>
           <div class="sync-badge">
             <span class="sync-dot ${STATE.syncStatus}" id="sync-dot"></span>
-            <span id="sync-text">${STATE.syncStatus === 'synced' ? 'Synced' : STATE.syncStatus === 'saving' ? 'Saving...' : 'Offline'}</span>
+            <span id="sync-text">${STATE.syncStatus === 'synced' ? 'Synced' : STATE.syncStatus === 'saving' ? 'Saving...' : 'Saved'}</span>
           </div>
           <button class="icon-btn" id="refresh-btn" title="Sync Data"><i data-lucide="refresh-cw" class="icon"></i></button>
         </div>
@@ -391,12 +398,40 @@ function injectShellLayout(activePageKey, pageTitle) {
         <div class="nav-pill"><i data-lucide="award" class="icon"></i></div>
         <span>Exams</span>
       </a>
+      <a class="bottom-nav-item ${activePageKey === 'materials' ? 'active' : ''}" href="materials.html">
+        <div class="nav-pill"><i data-lucide="book-open" class="icon"></i></div>
+        <span>Materials</span>
+      </a>
     </nav>
   `;
 
   const currentTheme = (STATE.settings && STATE.settings.appearance && STATE.settings.appearance.theme) || STATE.theme || 'light';
   applyTheme(currentTheme);
   bindShellEvents();
+}
+
+function updateShellBranding() {
+  const tuitionName = STATE.settings.tuitionName || 'TuitionHub Center';
+  const logoText = tuitionName.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase() || 'TH';
+  const centerLogo = STATE.settings.tuitionLogo || STATE.settings.logoUrl;
+  const logoMarkup = centerLogo
+    ? `<img src="${escapeHtml(centerLogo)}" alt="${escapeHtml(tuitionName)} logo" class="sidebar-custom-logo">`
+    : `<span>${escapeHtml(logoText)}</span>`;
+  const sidebarLogo = $('#sidebar-logo-mark');
+  if (sidebarLogo) {
+    sidebarLogo.innerHTML = logoMarkup;
+    sidebarLogo.style.background = centerLogo ? 'transparent' : '';
+    sidebarLogo.style.padding = centerLogo ? '0' : '';
+  }
+  const headerLogo = $('.header-logo-mark');
+  if (headerLogo) {
+    headerLogo.innerHTML = logoMarkup;
+    headerLogo.classList.toggle('has-image', Boolean(centerLogo));
+  }
+  const sidebarName = $('#sidebar-brand-name');
+  if (sidebarName) sidebarName.textContent = tuitionName;
+  const headerName = $('.header-titles .tuition-name');
+  if (headerName) headerName.textContent = tuitionName;
 }
 
 function bindShellEvents() {

@@ -69,15 +69,6 @@ function renderDashboard() {
         </div>
         <div class="stat-value" style="color:var(--danger)">${formatCurrency(totalPendingFees)}</div>
         <div style="font-size:12px;color:var(--text-secondary)">Total outstanding</div>
-        <div class="dashboard-overdue-list">
-          ${outstandingDues.length ? outstandingDues.slice(0, 5).map(item => `
-            <div class="dashboard-overdue-item">
-              <span><strong>${escapeHtml(item.student.studentName)}</strong><small>${escapeHtml(item.student.batch || '—')} · ${formatCurrency(item.balance)}</small></span>
-              <button type="button" class="btn btn-outline btn-sm dashboard-fee-reminder-btn" data-student-id="${escapeHtml(item.student.studentId)}" aria-label="WhatsApp reminder for ${escapeHtml(item.student.studentName)}"><i data-lucide="message-circle" class="icon"></i><span>Remind</span></button>
-            </div>
-          `).join('') : '<div class="section-sub">No outstanding student balances.</div>'}
-          ${outstandingDues.length > 5 ? `<a class="dashboard-more-dues" href="fee.html">View all ${outstandingDues.length} students</a>` : ''}
-        </div>
       </div>` : '',
 
     w.recentExams !== false ? `

@@ -216,7 +216,7 @@ function getFeeLedgerRecords() {
   if (rowRecords && rowRecords.length && Array.isArray(rowRecords[0]) && !rowHeaders) {
     const headerNames = rowRecords[0].map(value => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, ''));
     const hasStudent = headerNames.some(value => ['studentid', 'student', 'admissionid', 'admissionnumber'].includes(value));
-    const hasPeriod = headerNames.some(value => ['month', 'feemonth', 'paymentmonth', 'period', 'feeperiod', 'monthyear'].includes(value));
+    const hasPeriod = headerNames.some(value => ['month', 'feemonth', 'paymentmonth', 'paymentmonthperiod', 'period', 'feeperiod', 'monthyear'].includes(value));
     if (hasStudent && hasPeriod) {
       rowHeaders = rowRecords[0];
       rowRecords = rowRecords.slice(1);
@@ -253,14 +253,17 @@ function getFeeLedgerRecords() {
     const composite = parseFeeCompositeKey(compositeValue);
     const studentId = String(getValue('studentId', 'student', 'admissionId', 'admissionNumber') ||
       (composite && composite.studentId) || '').trim();
-    const dateValue = getValue('date', 'datePaid', 'paymentDate', 'paidDate', 'transactionDate');
-    const month = normalizeFeeMonth(getValue('month', 'feeMonth', 'paymentMonth', 'period',
+    const dateValue = getValue('date', 'datePaid', 'paymentDate', 'dateOfPayment', 'paidDate', 'transactionDate');
+    const month = normalizeFeeMonth(getValue('month', 'feeMonth', 'paymentMonth', 'paymentMonthPeriod', 'period',
       'selectedPeriod', 'feePeriod', 'periodKey', 'billingPeriod', 'monthYear') ||
       (composite && composite.month) || dateValue);
-    const amountValue = getValue('amount', 'amountPaid', 'paidAmount', 'feeAmountPaid', 'collectedAmount', 'amountCollected', 'paymentAmount') || 0;
+    const transactionAmountValue = getValue('transactionAmount', 'lastPaymentAmount', 'paymentTransactionAmount');
+    const amountValue = getValue('amount', 'amountPaid', 'paidAmount', 'feeAmountPaid', 'collectedAmount', 'amountCollected', 'paymentAmount', 'paid') || transactionAmountValue || 0;
     const amount = typeof amountValue === 'number'
       ? amountValue
       : Number(String(amountValue).replace(/[^0-9.-]/g, '')) || 0;
+    const baseAmountValue = getValue('baseAmount', 'monthlyAmount', 'monthlyFee', 'feeAmount', 'baseFee');
+    const expectedAmountValue = getValue('expectedAmount', 'amountDue', 'totalDue', 'totalAmountDue', 'totalAmount', 'feeExpectedAmount');
     const rawStatus = String(getValue('status', 'paymentStatus', 'feeStatus')).trim().toLowerCase();
     const status = ['paid', 'complete', 'completed', 'received', 'success', 'successful'].includes(rawStatus)
       ? 'Paid'
@@ -274,6 +277,9 @@ function getFeeLedgerRecords() {
       studentId,
       month,
       amount,
+      transactionAmount: Number(String(transactionAmountValue || '').replace(/[^0-9.-]/g, '')) || 0,
+      baseAmount: Number(String(baseAmountValue || '').replace(/[^0-9.-]/g, '')) || 0,
+      expectedAmount: Number(String(expectedAmountValue || '').replace(/[^0-9.-]/g, '')) || 0,
       date: normalizedDate,
       paymentMode: getValue('paymentMode', 'mode', 'paymentMethod') || 'Cash',
       status
@@ -733,15 +739,10 @@ function openPaymentModal(student = null) {
     renderFeesPage();
 
     if (window.apiRequest && (!window.getGoogleSheetsUrl || window.getGoogleSheetsUrl())) {
-      try {
-        const result = await window.apiRequest('saveFee', { record });
-        if (!result || result.success === false) {
-          throw new Error('Google Sheets did not confirm the fee payment save.');
-        }
-      } catch (e) {
+      window.apiRequest('saveFee', { record }).catch(e => {
         console.error('Google Sheets fee payment save failed:', e);
         showToast('warning', 'Saved locally, but Google Sheets sync failed');
-      }
+      });
     }
 
     /* Show success state in modal with print/save receipt option */
@@ -828,7 +829,16 @@ function showFeeSaveError(overlay) {
 
 function openFeeReceiptPrint(student, amount, month, payment = {}) {
   const settings = STATE.settings || {};
-  const receiptPrefix = (settings.receiptSettings && settings.receiptSettings.prefix) || settings.receiptPrefix || 'REC-';
+  const receiptSettings = settings.receiptSettings || {};
+  const receiptPrefix = receiptSettings.prefix || settings.receiptPrefix || 'REC-';
+  const receiptTitle = escapeHtml(receiptSettings.title || 'FEE PAYMENT RECEIPT');
+  const centerName = escapeHtml(settings.tuitionName || 'Tution Hub');
+  const centerLogo = settings.tuitionLogo || settings.logoUrl || '';
+  const showLogo = receiptSettings.showLogo !== false;
+  const showStudentId = receiptSettings.showStudentId !== false;
+  const showParentDetails = receiptSettings.showParentDetails !== false;
+  const showPaymentDate = receiptSettings.showPaymentDate !== false;
+  const footerMessage = escapeHtml(receiptSettings.footerMessage || 'Thank you for your payment!');
   const receiptNo = receiptPrefix + Math.floor(100000 + Math.random() * 900000);
   const paymentDate = payment.date ? formatDate(payment.date) : formatDate(todayISO());
   const safeStudentName = escapeHtml(student.studentName || '');
@@ -860,7 +870,8 @@ function openFeeReceiptPrint(student, amount, month, payment = {}) {
         * { box-sizing: border-box; }
         body { margin: 0; padding: 24px; color: #111827; font: 13px Arial, sans-serif; }
         .receipt { width: 100%; max-width: 148mm; margin: 0 auto; border: 1px solid #334155; padding: 18px; }
-        .institute { margin: 0 0 14px; text-align: center; font-size: 20px; font-weight: 700; }
+        .institute { margin: 0 0 14px; text-align: center; font-size: 20px; font-weight: 700; display:flex; align-items:center; justify-content:center; gap:10px; }
+        .institute img { width:42px; height:42px; object-fit:contain; }
         .title { margin: 0 0 16px; padding: 9px; background: #334155; color: #fff; text-align: center; font-size: 15px; letter-spacing: 1px; }
         .details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; padding: 12px; border: 1px solid #64748b; }
         .detail { display: grid; grid-template-columns: minmax(82px, auto) 1fr; gap: 6px; overflow-wrap: anywhere; }
@@ -887,15 +898,15 @@ function openFeeReceiptPrint(student, amount, month, payment = {}) {
     </head>
     <body>
       <main class="receipt">
-        <h1 class="institute">Tution Hub</h1>
-        <h2 class="title">FEE RECEIPT</h2>
+        <h1 class="institute">${showLogo && centerLogo ? `<img src="${escapeHtml(centerLogo)}" alt="${centerName} logo">` : ''}<span>${centerName}</span></h1>
+        <h2 class="title">${receiptTitle}</h2>
         <section class="details">
           <div class="detail"><span class="label">Receipt No</span><span>${safeReceiptNo}</span></div>
-          <div class="detail"><span class="label">Payment Date</span><span>${safePaymentDate}</span></div>
-          <div class="detail"><span class="label">Student ID</span><span>${safeStudentId}</span></div>
+          ${showPaymentDate ? `<div class="detail"><span class="label">Payment Date</span><span>${safePaymentDate}</span></div>` : ''}
+          ${showStudentId ? `<div class="detail"><span class="label">Student ID</span><span>${safeStudentId}</span></div>` : ''}
           <div class="detail"><span class="label">Fee Month</span><span>${safeMonth}</span></div>
           <div class="detail"><span class="label">Student Name</span><span>${safeStudentName}</span></div>
-          <div class="detail"><span class="label">Parent</span><span>${safeParent}</span></div>
+          ${showParentDetails ? `<div class="detail"><span class="label">Parent</span><span>${safeParent}</span></div>` : ''}
           <div class="detail"><span class="label">Batch / Class</span><span>${safeBatch}</span></div>
         </section>
         <table>
@@ -909,7 +920,7 @@ function openFeeReceiptPrint(student, amount, month, payment = {}) {
         </table>
         <div class="payment-mode"><span class="label">Payment Mode:</span> ${safePaymentMode}</div>
         <footer class="footer">
-          <p><strong>Thank you for your payment!</strong></p>
+          <p><strong>${footerMessage}</strong></p>
           <p>This is a computer-generated receipt.</p>
         </footer>
       </main>

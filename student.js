@@ -530,17 +530,9 @@ async function exportStudentPDF(studentId) {
 }
 
 async function exportAllStudentsPDF() {
-  const students = STATE.students.filter(s => {
-    const matchSearch = !studentFilters.search ||
-      (s.studentName && s.studentName.toLowerCase().includes(studentFilters.search.toLowerCase())) ||
-      (s.studentId && s.studentId.toLowerCase().includes(studentFilters.search.toLowerCase())) ||
-      (s.phone && s.phone.includes(studentFilters.search));
-    const matchBatch = !studentFilters.batch || s.batch === studentFilters.batch;
-    const matchStatus = !studentFilters.status || s.status === studentFilters.status;
-    return matchSearch && matchBatch && matchStatus;
-  });
+  const students = Array.isArray(STATE.students) ? STATE.students : [];
   if (students.length === 0) {
-    showToast('warning', 'No students match the current filters');
+    showToast('warning', 'There are no student records to export');
     return;
   }
   if (!window.jspdf) { showToast('error', 'PDF engine loading...'); return; }
@@ -553,12 +545,14 @@ async function exportAllStudentsPDF() {
     const tableWidth = pageWidth - margin * 2;
     const columns = [
       { title: 'Sl. No', width: 13 },
-      { title: 'Student ID', width: 32 },
-      { title: 'Full Name', width: 46 },
-      { title: 'Grade / Batch', width: 34 },
-      { title: 'Parent Name & Contact', width: 72 },
-      { title: 'Joining Date', width: 34 },
-      { title: 'Status', width: 28 }
+      { title: 'Student ID', width: 26 },
+      { title: 'Student Name', width: 39 },
+      { title: 'Batch', width: 27 },
+      { title: 'Parent / Guardian', width: 34 },
+      { title: 'Phone Number', width: 28 },
+      { title: 'Joining Date', width: 25 },
+      { title: 'Monthly Fee', width: 25 },
+      { title: 'Status', width: 24 }
     ];
     columns[columns.length - 1].width += tableWidth - columns.reduce((sum, column) => sum + column.width, 0);
 
@@ -569,11 +563,6 @@ async function exportAllStudentsPDF() {
     }, {});
     const batchSummary = Object.entries(batchCounts).map(([batch, count]) => `${batch}: ${count}`).join(' | ');
     const activeCount = students.filter(student => (student.status || 'Active') === 'Active').length;
-    const filterSummary = [
-      studentFilters.search ? `Search: ${studentFilters.search}` : '',
-      studentFilters.batch ? `Batch: ${studentFilters.batch}` : '',
-      studentFilters.status ? `Status: ${studentFilters.status}` : ''
-    ].filter(Boolean).join(' | ') || 'All students';
 
     const drawTableHeader = y => {
       let x = margin;
@@ -608,7 +597,7 @@ async function exportAllStudentsPDF() {
       doc.setTextColor(71, 85, 105);
       doc.text(`Generated Date: ${new Date().toLocaleDateString()}`, margin, 28);
       doc.text(`Total Students: ${students.length}`, margin + 75, 28);
-      doc.text(doc.splitTextToSize(`Batch / Filter Applied: ${filterSummary}`, tableWidth), margin, 33);
+      doc.text(`Batch / Filter Applied: All records`, margin, 33);
 
       const summaryY = 38;
       const summaryGap = 4;
@@ -645,8 +634,10 @@ async function exportAllStudentsPDF() {
         String(student.studentId || ''),
         String(student.studentName || ''),
         String(student.batch || 'Unassigned'),
-        `${student.parentName || '—'}${student.phone ? `\n${student.phone}` : ''}`,
+        String(student.parentName || '—'),
+        String(student.phone || '—'),
         formatDate(student.joiningDate),
+        formatCurrency(student.monthlyFee),
         String(student.status || 'Active')
       ];
       const cellLines = values.map((value, cellIndex) =>
@@ -664,7 +655,7 @@ async function exportAllStudentsPDF() {
         doc.setFillColor(index % 2 === 0 ? 248 : 255, index % 2 === 0 ? 250 : 255, index % 2 === 0 ? 252 : 255);
         doc.setDrawColor(203, 213, 225);
         doc.rect(x, y, columns[cellIndex].width, rowHeight, 'FD');
-        doc.setFont('helvetica', cellIndex === 6 && values[cellIndex] === 'Active' ? 'bold' : 'normal');
+        doc.setFont('helvetica', cellIndex === 8 && values[cellIndex] === 'Active' ? 'bold' : 'normal');
         doc.setFontSize(8);
         doc.setTextColor(15, 23, 42);
         doc.text(lines, x + 2, y + 4.5);
