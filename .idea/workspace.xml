@@ -6,6 +6,18 @@
   <component name="ChangeListManager">
     <list default="true" id="55046281-98fa-49bb-904a-362d7596f7a3" name="Changes" comment="version 4.1">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/attendance.html" beforeDir="false" afterPath="$PROJECT_DIR$/attendance.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/code.gs" beforeDir="false" afterPath="$PROJECT_DIR$/code.gs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/exams-and-marks.html" beforeDir="false" afterPath="$PROJECT_DIR$/exams-and-marks.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/exams.js" beforeDir="false" afterPath="$PROJECT_DIR$/exams.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/fee.html" beforeDir="false" afterPath="$PROJECT_DIR$/fee.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/materials.html" beforeDir="false" afterPath="$PROJECT_DIR$/materials.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/notice.html" beforeDir="false" afterPath="$PROJECT_DIR$/notice.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/settings.html" beforeDir="false" afterPath="$PROJECT_DIR$/settings.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/student.html" beforeDir="false" afterPath="$PROJECT_DIR$/student.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/timetable.html" beforeDir="false" afterPath="$PROJECT_DIR$/timetable.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -163,7 +175,15 @@
       <option name="project" value="LOCAL" />
       <updated>1793733354431</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="version 4.1">
+      <option name="closed" value="true" />
+      <created>1793775953626</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1793775953627</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

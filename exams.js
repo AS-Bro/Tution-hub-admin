@@ -5,8 +5,7 @@
 let examState = {
   selectedExamId: '',
   subjectFilter: '',
-  renderedExamId: '',
-  localMarks: {} // studentId -> mark value
+  batchFilter: ''
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -27,20 +26,26 @@ function renderExamsPage() {
   if (!container) return;
 
   const subjects = getExamSubjects();
-  const filteredExams = examState.subjectFilter
-    ? STATE.exams.filter(exam => String(exam.subject || '').trim() === examState.subjectFilter)
-    : STATE.exams;
+  const filteredExams = getVisibleExams();
   const allMode = examState.selectedExamId === 'ALL';
   const selectedExam = STATE.exams.find(e => String(e.id) === String(examState.selectedExamId));
-  const selectedMatchesFilter = selectedExam && (!examState.subjectFilter ||
-    String(selectedExam.subject || '').trim() === examState.subjectFilter);
+  const selectedMatchesFilter = selectedExam &&
+    (!examState.subjectFilter || String(selectedExam.subject || '').trim() === examState.subjectFilter) &&
+    (!examState.batchFilter || String(selectedExam.batch || '') === examState.batchFilter);
   if (!allMode && !selectedMatchesFilter) {
     examState.selectedExamId = filteredExams.length ? filteredExams[0].id : '';
   }
   const currentExam = allMode ? null : STATE.exams.find(e => String(e.id) === String(examState.selectedExamId)) || null;
-  const currentMarksObj = currentExam ? getExamMarks(currentExam) : {};
+  const allMarksByExam = getAllExamMarks(STATE.exams);
+  const marksByExam = new Map(filteredExams.map(exam => [
+    String(exam.id),
+    allMarksByExam.get(String(exam.id)) || {}
+  ]));
+  const currentMarksObj = currentExam ? marksByExam.get(String(currentExam.id)) || {} : {};
 
-  const batchStudents = currentExam ? STATE.students.filter(s => s.batch === currentExam.batch && s.status === 'Active') : [];
+  const batchStudents = currentExam ? STATE.students.filter(s =>
+    String(s.batch) === String(currentExam.batch) && s.status === 'Active'
+  ) : [];
   const evaluated = currentExam ? getEvaluatedStudents(currentExam, batchStudents) : [];
   const rankByStudent = new Map();
   evaluated.forEach((result, index) => {
@@ -55,8 +60,13 @@ function renderExamsPage() {
   const highestMark = countScored > 0 ? evaluated[0].score : 0;
 
   const avgScore = countScored > 0 ? (totalScoreSum / countScored).toFixed(1) : 0;
-  const allStudents = STATE.students;
-  const cumulativeResults = allStudents.map(student => ({ student, result: getStudentCumulativeResult(student) }));
+  const allStudents = STATE.students.filter(student =>
+    !examState.batchFilter || String(student.batch || '') === examState.batchFilter
+  );
+  const cumulativeResults = allStudents.map(student => ({
+    student,
+    result: getStudentCumulativeResult(student, filteredExams, marksByExam)
+  }));
   const cumulativeEvaluated = cumulativeResults.filter(item => item.result);
   cumulativeEvaluated.sort((a, b) => b.result.percentage - a.result.percentage ||
     b.result.score - a.result.score || String(a.student.studentName).localeCompare(String(b.student.studentName)));
@@ -68,7 +78,18 @@ function renderExamsPage() {
         ? cumulativeRankByStudent.get(String(previous.student.studentId))
         : index + 1);
   });
-  const institutionAnalysis = getInstitutionExamAnalysis();
+  const institutionAnalysis = getInstitutionExamAnalysis(allMarksByExam);
+  const cumulativeAverage = cumulativeEvaluated.length
+    ? (cumulativeEvaluated.reduce((sum, item) => sum + item.result.percentage, 0) / cumulativeEvaluated.length).toFixed(1)
+    : '0';
+  const cumulativeHighest = cumulativeEvaluated.length
+    ? Math.max(...cumulativeEvaluated.map(item => item.result.percentage))
+    : 0;
+  const cumulativePassRate = cumulativeEvaluated.length
+    ? Math.round(cumulativeEvaluated.filter(item => item.result.percentage >= 40).length / cumulativeEvaluated.length * 100)
+    : 0;
+  const cumulativeGradeCounts = { 'A+': 0, A: 0, B: 0, C: 0, D: 0, F: 0 };
+  cumulativeEvaluated.forEach(item => { cumulativeGradeCounts[item.result.grade] += 1; });
 
   container.innerHTML = `
     <div class="section-head">
@@ -91,6 +112,16 @@ function renderExamsPage() {
         ${filteredExams.length === 0 ? '<option value="">No Exams Available</option>' : ''}
         ${filteredExams.map(e => `<option value="${escapeHtml(e.id)}" ${String(e.id) === String(examState.selectedExamId) ? 'selected' : ''}>${escapeHtml(getExamDisplayTitle(e))} (${escapeHtml(e.batch)} - Total: ${e.totalMarks} marks)</option>`).join('')}
       </select>
+      <label for="exam-batch-filter" style="font-weight:700;font-size:14px">Batch / Class:</label>
+      <select class="select-filter" id="exam-batch-filter">
+        <option value="">All Batches</option>
+        ${Array.from(new Set([
+    ...STATE.students.map(student => String(student.batch || '').trim()),
+    ...STATE.exams.map(exam => String(exam.batch || '').trim())
+  ].filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b))
+    .map(batch => `<option value="${escapeHtml(batch)}" ${batch === examState.batchFilter ? 'selected' : ''}>${escapeHtml(batch)}</option>`).join('')}
+      </select>
       <label for="exam-subject-filter" style="font-weight:700;font-size:14px">Subject:</label>
       <select class="select-filter" id="exam-subject-filter">
         <option value="">All Subjects</option>
@@ -99,10 +130,17 @@ function renderExamsPage() {
       <button class="btn btn-outline btn-sm" id="exam-message-templates-btn">
         <i data-lucide="message-square-text" class="icon"></i> Message Templates
       </button>
+      <button class="btn btn-outline btn-sm" id="export-exam-csv-btn" ${!currentExam && !allMode ? 'disabled' : ''}><i data-lucide="download" class="icon"></i> Export CSV</button>
+      <button class="btn btn-outline btn-sm" id="print-exam-summary-btn" ${!currentExam && !allMode ? 'disabled' : ''}><i data-lucide="printer" class="icon"></i> Print Summary</button>
       ${currentExam ? `
         <button class="btn btn-outline btn-sm" id="save-marks-btn"><i data-lucide="save" class="icon"></i> Save All Marks</button>
         <span id="exam-marks-save-status" class="exam-marks-save-status" role="status" aria-live="polite"></span>
         <button class="btn btn-primary btn-sm" id="broadcast-exam-results-btn"><i data-lucide="send" class="icon"></i> Broadcast Marks to All Parents</button>
+        <button class="btn btn-danger btn-sm" id="delete-exam-btn"><i data-lucide="trash-2" class="icon"></i> Delete Exam</button>
+      ` : ''}
+      ${allMode ? `
+        <button class="btn btn-primary btn-sm" id="save-marks-btn"><i data-lucide="save" class="icon"></i> Save All Marks</button>
+        <span id="exam-marks-save-status" class="exam-marks-save-status" role="status" aria-live="polite"></span>
       ` : ''}
     </div>
 
@@ -119,20 +157,24 @@ function renderExamsPage() {
         ${allMode ? `
         <div class="card stat-card">
           <div class="stat-top"><span class="stat-title">Cumulative Students</span><div class="stat-icon" style="background:var(--primary-container);color:var(--primary)"><i data-lucide="users" class="icon"></i></div></div>
-          <div class="stat-value">${cumulativeEvaluated.length}<span style="font-size:13px;color:var(--text-secondary)"> / ${allStudents.length} students</span></div>
+          <div class="stat-value"><span id="exam-cumulative-count">${cumulativeEvaluated.length}</span><span style="font-size:13px;color:var(--text-secondary)"> / ${allStudents.length} students</span></div>
         </div>
         <div class="card stat-card">
-          <div class="stat-top"><span class="stat-title">Institution Pass Rate</span><div class="stat-icon" style="background:var(--success-light);color:var(--success)"><i data-lucide="bar-chart-3" class="icon"></i></div></div>
-          <div class="stat-value">${institutionAnalysis.passRate}%</div>
+          <div class="stat-top"><span class="stat-title">Cumulative Class Average</span><div class="stat-icon" style="background:var(--primary-container);color:var(--primary)"><i data-lucide="bar-chart-2" class="icon"></i></div></div>
+          <div class="stat-value"><span id="exam-cumulative-average">${cumulativeAverage}%</span></div>
         </div>
         <div class="card stat-card">
-          <div class="stat-top"><span class="stat-title">Top Overall Score</span><div class="stat-icon" style="background:var(--warning-light);color:var(--warning)"><i data-lucide="trophy" class="icon"></i></div></div>
-          <div class="stat-value">${cumulativeEvaluated.length ? `${cumulativeEvaluated[0].result.percentage}%` : '—'}</div>
+          <div class="stat-top"><span class="stat-title">Highest Overall Score</span><div class="stat-icon" style="background:var(--warning-light);color:var(--warning)"><i data-lucide="trophy" class="icon"></i></div></div>
+          <div class="stat-value"><span id="exam-cumulative-highest">${cumulativeHighest}%</span></div>
         </div>
         <div class="card stat-card">
-          <div class="stat-top"><span class="stat-title">Grades Across All Tests</span><div class="stat-icon" style="background:var(--secondary-container);color:var(--secondary)"><i data-lucide="bar-chart-3" class="icon"></i></div></div>
-          <div class="exam-institution-grades"><span class="stat-title">Grade Distribution (all evaluations)</span><div class="exam-grade-distribution">
-            ${['A+', 'A', 'B', 'C', 'D', 'F'].map(grade => `<span><strong>${grade}</strong><span>${institutionAnalysis.gradeCounts[grade]}</span></span>`).join('')}
+          <div class="stat-top"><span class="stat-title">Cumulative Pass Rate</span><div class="stat-icon" style="background:var(--success-light);color:var(--success)"><i data-lucide="bar-chart-3" class="icon"></i></div></div>
+          <div class="stat-value"><span id="exam-cumulative-pass-rate">${cumulativePassRate}%</span></div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-top"><span class="stat-title">Cumulative Grade Distribution</span><div class="stat-icon" style="background:var(--secondary-container);color:var(--secondary)"><i data-lucide="bar-chart-3" class="icon"></i></div></div>
+          <div class="exam-institution-grades"><span class="stat-title">Grades across visible students</span><div class="exam-grade-distribution">
+            ${['A+', 'A', 'B', 'C', 'D', 'F'].map(grade => `<span><strong>${grade}</strong><span data-cumulative-grade-count="${grade}">${cumulativeGradeCounts[grade]}</span></span>`).join('')}
           </div></div>
         </div>
         ` : `
@@ -154,10 +196,10 @@ function renderExamsPage() {
 
         <div class="card stat-card">
           <div class="stat-top">
-            <span class="stat-title">Evaluated Students</span>
+            <span class="stat-title">Pass Rate</span>
             <div class="stat-icon" style="background:var(--secondary-container);color:var(--secondary)"><i data-lucide="check-square" class="icon"></i></div>
           </div>
-          <div class="stat-value"><span id="exam-evaluated-count">${countScored}</span> <span style="font-size:13px;color:var(--text-secondary)">/ ${batchStudents.length}</span></div>
+          <div class="stat-value"><span id="exam-pass-rate">${countScored ? Math.round(evaluated.filter(result => result.percentage >= 40).length / countScored * 100) : 0}%</span> <span id="exam-pass-count" style="font-size:13px;color:var(--text-secondary)">${evaluated.filter(result => result.percentage >= 40).length} / ${countScored} pass</span></div>
         </div>
         <div class="card stat-card">
           <div class="stat-top">
@@ -174,7 +216,7 @@ function renderExamsPage() {
       </div>
 
       <!-- MARKS REGISTER TABLE -->
-      <div class="table-wrap exam-marks-table">
+      <div class="table-wrap exam-marks-table ${allMode ? 'exam-cumulative-table' : ''}">
         <table>
           <thead>
             <tr>
@@ -183,11 +225,14 @@ function renderExamsPage() {
               <th class="exam-col-batch">Batch</th>
               <th class="exam-col-rank">Class Rank</th>
               ${allMode ? `
+                ${filteredExams.map(exam => `<th class="exam-all-test-column">${escapeHtml(getExamDisplayTitle(exam))} (${Number(exam.totalMarks)} max)</th>`).join('')}
                 <th class="exam-col-marks">Cumulative Score</th>
                 <th class="exam-col-percentage">Overall Percentage</th>
+                <th class="exam-col-grade">Grade</th>
               ` : `
                 <th class="exam-col-marks">Marks Obtained (Max: ${currentExam.totalMarks})</th>
                 <th class="exam-col-percentage">Percentage</th>
+                <th class="exam-col-grade">Grade</th>
               `}
               <th class="exam-col-actions" style="text-align:right">Report & Parent Notification</th>
             </tr>
@@ -196,18 +241,25 @@ function renderExamsPage() {
             ${allMode ? allStudents.map(s => {
     const result = cumulativeResults.find(item => String(item.student.studentId) === String(s.studentId)).result;
     return `
-                <tr>
-                  <td class="exam-col-id"><span style="font-weight:700;color:var(--primary)">${escapeHtml(s.studentId)}</span></td>
-                  <td class="exam-col-name">
+                <tr data-cumulative-student="${escapeHtml(s.studentId)}">
+                  <td class="exam-col-id" data-label="ID"><span style="font-weight:700;color:var(--primary)">${escapeHtml(s.studentId)}</span></td>
+                  <td class="exam-col-name" data-label="Student">
                     <div style="font-weight:700">${escapeHtml(s.studentName)}</div>
                     <button class="btn btn-outline btn-sm exam-mobile-details-btn" data-student-id="${escapeHtml(s.studentId)}">Details</button>
                     <button class="btn btn-outline btn-sm exam-mobile-report-btn" data-student-id="${escapeHtml(s.studentId)}" ${result ? '' : 'disabled'}><i data-lucide="printer" class="icon"></i> Print Report Card</button>
                   </td>
-                  <td class="exam-col-batch"><span class="badge badge-blue">${escapeHtml(s.batch || '—')}</span></td>
-                  <td class="exam-col-rank">${result ? `#${cumulativeRankByStudent.get(String(s.studentId))}` : '—'}</td>
-                  <td class="exam-col-marks">${result ? `${result.score} / ${result.totalPossible}` : '—'}</td>
-                  <td class="exam-col-percentage"><span class="badge ${result ? result.percentage >= 40 ? 'badge-green' : 'badge-red' : 'badge-gray'}">${result ? `${result.percentage}%` : '—'}</span></td>
-                  <td class="exam-col-actions" style="text-align:right">
+                  <td class="exam-col-batch" data-label="Batch"><span class="badge badge-blue">${escapeHtml(s.batch || '—')}</span></td>
+                  <td class="exam-col-rank" data-label="Class Rank"><span class="exam-cumulative-rank">${result ? `#${cumulativeRankByStudent.get(String(s.studentId))}` : '—'}</span></td>
+                  ${filteredExams.map(exam => {
+                    const score = (marksByExam.get(String(exam.id)) || {})[s.studentId] ?? '';
+      const applicable = String(exam.batch) === String(s.batch);
+                    const examResult = applicable ? getStudentExamResult(s, exam, marksByExam.get(String(exam.id))) : null;
+                    return `<td class="exam-all-test-column" data-label="${escapeHtml(getExamDisplayTitle(exam))}"><div class="exam-cumulative-test-cell"><input type="number" class="mark-input cumulative-mark-input" data-exam-id="${escapeHtml(exam.id)}" data-student-id="${escapeHtml(s.studentId)}" value="${escapeHtml(score)}" placeholder="—" min="0" max="${Number(exam.totalMarks)}" ${applicable ? '' : 'disabled'} aria-label="${escapeHtml(getExamDisplayTitle(exam))} marks for ${escapeHtml(s.studentName)}"><span class="exam-cumulative-test-result">${examResult ? `${examResult.percentage}% · ${examResult.grade}` : '—'}</span></div></td>`;
+    }).join('')}
+                  <td class="exam-col-marks" data-label="Cumulative Score"><span class="exam-cumulative-score">${result ? `${result.score} / ${result.totalPossible}` : '—'}</span></td>
+                  <td class="exam-col-percentage" data-label="Overall Percentage"><span class="badge exam-cumulative-percentage ${result ? result.percentage >= 40 ? 'badge-green' : 'badge-red' : 'badge-gray'}">${result ? `${result.percentage}%` : '—'}</span></td>
+                  <td class="exam-col-grade" data-label="Grade"><span class="exam-cumulative-grade">${result ? result.grade : '—'}</span></td>
+                  <td class="exam-col-actions" data-label="Reports" style="text-align:right">
                     <button class="btn btn-outline btn-sm print-exam-report-btn" data-student-id="${escapeHtml(s.studentId)}" ${result ? '' : 'disabled'}><i data-lucide="printer" class="icon"></i> Print Report Card</button>
                   </td>
                 </tr>`;
@@ -219,21 +271,22 @@ function renderExamsPage() {
       : null;
     return `
                 <tr>
-                  <td class="exam-col-id"><span style="font-weight:700;color:var(--primary)">${escapeHtml(s.studentId)}</span></td>
-                  <td class="exam-col-name">
+                  <td class="exam-col-id" data-label="ID"><span style="font-weight:700;color:var(--primary)">${escapeHtml(s.studentId)}</span></td>
+                  <td class="exam-col-name" data-label="Student">
                     <div style="font-weight:700">${escapeHtml(s.studentName)}</div>
                     <button class="btn btn-outline btn-sm exam-mobile-details-btn" data-student-id="${escapeHtml(s.studentId)}">Details</button>
                     <button class="btn btn-outline btn-sm exam-mobile-report-btn" data-student-id="${escapeHtml(s.studentId)}"><i data-lucide="printer" class="icon"></i> Print Report Card</button>
                   </td>
-                  <td class="exam-col-batch"><span class="badge badge-blue">${escapeHtml(s.batch)}</span></td>
-                  <td class="exam-col-rank"><span class="exam-rank-value" data-rank-student="${escapeHtml(s.studentId)}">${rankByStudent.has(s.studentId) ? `#${rankByStudent.get(s.studentId)}` : '—'}</span></td>
-                  <td class="exam-col-marks">
-                    <input type="number" class="mark-input" data-student-id="${escapeHtml(s.studentId)}" value="${currentScore}" placeholder="0 - ${currentExam.totalMarks}" style="width:110px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-weight:700;background:var(--card);color:var(--text)" max="${currentExam.totalMarks}" min="0">
+                  <td class="exam-col-batch" data-label="Batch"><span class="badge badge-blue">${escapeHtml(s.batch)}</span></td>
+                  <td class="exam-col-rank" data-label="Class Rank"><span class="exam-rank-value" data-rank-student="${escapeHtml(s.studentId)}">${rankByStudent.has(s.studentId) ? `#${rankByStudent.get(s.studentId)}` : '—'}</span></td>
+                  <td class="exam-col-marks" data-label="Marks">
+                    <input type="number" class="mark-input" data-exam-id="${escapeHtml(currentExam.id)}" data-student-id="${escapeHtml(s.studentId)}" value="${escapeHtml(currentScore)}" placeholder="0 - ${currentExam.totalMarks}" style="width:110px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-weight:700;background:var(--card);color:var(--text)" max="${currentExam.totalMarks}" min="0" aria-label="Marks for ${escapeHtml(s.studentName)}">
                   </td>
-                  <td class="exam-col-percentage">
+                  <td class="exam-col-percentage" data-label="Percentage">
                     <span class="badge exam-percentage-value ${pct === null ? 'badge-gray' : pct >= 40 ? 'badge-green' : 'badge-red'}">${pct === null ? '—' : `${pct}%`}</span>
                   </td>
-                  <td class="exam-col-actions" style="text-align:right">
+                  <td class="exam-col-grade" data-label="Grade"><span class="exam-grade-value">${pct === null ? '—' : getGradeFromPercentage(pct)}</span></td>
+                  <td class="exam-col-actions" data-label="Reports" style="text-align:right">
                     <div class="exam-row-actions">
                       <button class="btn btn-outline btn-sm print-exam-report-btn" data-student-id="${escapeHtml(s.studentId)}" ${pct === null ? 'disabled' : ''}>
                         <i data-lucide="printer" class="icon"></i> Print Report Card
@@ -267,7 +320,6 @@ function renderExamsPage() {
   `;
 
   if (window.lucide) lucide.createIcons();
-  examState.renderedExamId = currentExam ? currentExam.id : '';
   bindExamEvents(currentExam, allMode);
 }
 
@@ -291,8 +343,21 @@ function bindExamEvents(currentExam, allMode = false) {
       if (examState.selectedExamId !== 'ALL') {
         const selected = STATE.exams.find(exam => String(exam.id) === String(examState.selectedExamId));
         if (!selected || (examState.subjectFilter && String(selected.subject || '').trim() !== examState.subjectFilter)) {
-          const nextExam = STATE.exams.find(exam => !examState.subjectFilter ||
-            String(exam.subject || '').trim() === examState.subjectFilter);
+          const nextExam = getVisibleExams()[0];
+          examState.selectedExamId = nextExam ? nextExam.id : '';
+        }
+      }
+      renderExamsPage();
+    };
+  }
+  const batchFilter = $('#exam-batch-filter');
+  if (batchFilter) {
+    batchFilter.onchange = (e) => {
+      examState.batchFilter = e.target.value;
+      if (examState.selectedExamId !== 'ALL') {
+        const selected = STATE.exams.find(exam => String(exam.id) === String(examState.selectedExamId));
+        if (!selected || (examState.batchFilter && String(selected.batch || '') !== examState.batchFilter)) {
+          const nextExam = getVisibleExams()[0];
           examState.selectedExamId = nextExam ? nextExam.id : '';
         }
       }
@@ -301,23 +366,30 @@ function bindExamEvents(currentExam, allMode = false) {
   }
 
   const saveMarksBtn = $('#save-marks-btn');
-  if (saveMarksBtn && currentExam) {
+  if (saveMarksBtn && (currentExam || allMode)) {
     saveMarksBtn.onclick = async () => {
       const markInputs = $all('.mark-input');
-      const newMarks = { ...(STATE.examMarks[currentExam.id] || {}) };
-      for (const input of markInputs) {
-        const value = input.value.trim();
-        if (value === '') {
-          delete newMarks[input.dataset.studentId];
-          continue;
+      const examsToSave = currentExam ? [currentExam] : getVisibleExams();
+      const marksByExam = {};
+      for (const exam of examsToSave) {
+        const newMarks = { ...((STATE.examMarks && STATE.examMarks[exam.id]) || {}) };
+        for (const input of markInputs.filter(item =>
+          String(item.dataset.examId) === String(exam.id) && !item.disabled
+        )) {
+          const value = input.value.trim();
+          if (value === '') {
+            delete newMarks[input.dataset.studentId];
+            continue;
+          }
+          const score = Number(value);
+          if (!Number.isFinite(score) || score < 0 || score > Number(exam.totalMarks)) {
+            showToast('warning', `Enter a valid mark from 0 to ${exam.totalMarks} for ${input.dataset.studentId}`);
+            input.focus();
+            return;
+          }
+          newMarks[input.dataset.studentId] = score;
         }
-        const score = Number(value);
-        if (!Number.isFinite(score) || score < 0 || score > Number(currentExam.totalMarks)) {
-          showToast('warning', `Enter a valid mark from 0 to ${currentExam.totalMarks} for ${input.dataset.studentId}`);
-          input.focus();
-          return;
-        }
-        newMarks[input.dataset.studentId] = score;
+        marksByExam[exam.id] = newMarks;
       }
 
       saveMarksBtn.disabled = true;
@@ -325,7 +397,7 @@ function bindExamEvents(currentExam, allMode = false) {
       let saveStatus = $('#exam-marks-save-status');
       if (saveStatus) saveStatus.textContent = 'Saving all student marks...';
       if (window.lucide) lucide.createIcons();
-      STATE.examMarks[currentExam.id] = newMarks;
+      Object.keys(marksByExam).forEach(examId => { STATE.examMarks[examId] = marksByExam[examId]; });
       saveStorage(LS_KEYS.EXAM_MARKS, STATE.examMarks);
       renderExamsPage();
       saveStatus = $('#exam-marks-save-status');
@@ -335,7 +407,9 @@ function bindExamEvents(currentExam, allMode = false) {
       let syncFailed = false;
       if (STATE.settings.gasUrl && window.apiRequest) {
         try {
-          await window.apiRequest('saveMarks', { examId: currentExam.id, marks: STATE.examMarks[currentExam.id] });
+          await Promise.all(examsToSave.map(exam =>
+            window.apiRequest('saveMarks', { examId: exam.id, marks: STATE.examMarks[exam.id] })
+          ));
         } catch (e) {
           syncFailed = true;
           console.error('Exam marks Google Sheets sync failed:', e);
@@ -346,6 +420,31 @@ function bindExamEvents(currentExam, allMode = false) {
       if (finalStatus) finalStatus.textContent = syncFailed
         ? 'Saved locally; Google Sheets sync failed.'
         : 'All marks saved successfully.';
+      const currentSaveButton = $('#save-marks-btn');
+      if (currentSaveButton) currentSaveButton.disabled = false;
+    };
+  }
+
+  const deleteExamBtn = $('#delete-exam-btn');
+  if (deleteExamBtn && currentExam) {
+    deleteExamBtn.onclick = async () => {
+      const title = getExamDisplayTitle(currentExam);
+      if (!window.confirm(`Delete "${title}" for ${currentExam.batch}? This will also permanently remove its marks.`)) return;
+      STATE.exams = STATE.exams.filter(exam => String(exam.id) !== String(currentExam.id));
+      if (STATE.examMarks) delete STATE.examMarks[currentExam.id];
+      saveStorage(LS_KEYS.EXAMS, STATE.exams);
+      saveStorage(LS_KEYS.EXAM_MARKS, STATE.examMarks);
+      examState.selectedExamId = getVisibleExams()[0]?.id || '';
+      renderExamsPage();
+      showToast('success', 'Exam and its marks were deleted on this device');
+      if (STATE.settings.gasUrl && window.apiRequest) {
+        try {
+          await window.apiRequest('deleteExam', { examId: currentExam.id });
+        } catch (e) {
+          console.error('Exam deletion Google Sheets sync failed:', e);
+          showToast('warning', 'Exam deleted locally, but Google Sheets deletion failed');
+        }
+      }
     };
   }
 
@@ -368,7 +467,25 @@ function bindExamEvents(currentExam, allMode = false) {
       if (row) row.classList.add('exam-mark-row-dirty');
       const saveStatus = $('#exam-marks-save-status');
       if (saveStatus) saveStatus.textContent = 'Unsaved mark changes';
-      updateExamPreview(currentExam);
+      if (allMode) updateCumulativePreview(input);
+      else updateExamPreview(currentExam);
+    };
+    input.onkeydown = event => {
+      const key = event.key;
+      const step = key === 'Enter' ? (event.shiftKey ? -1 : 1)
+        : key === 'ArrowDown' ? 1
+          : key === 'ArrowUp' ? -1 : 0;
+      if (!step) return;
+      const columnInputs = $all('.mark-input').filter(item =>
+        String(item.dataset.examId) === String(input.dataset.examId) && !item.disabled
+      );
+      const index = columnInputs.indexOf(input);
+      const next = columnInputs[index + step];
+      if (next) {
+        event.preventDefault();
+        next.focus();
+        next.select();
+      }
     };
   });
 
@@ -387,6 +504,18 @@ function bindExamEvents(currentExam, allMode = false) {
   if (broadcastBtn && currentExam) {
     broadcastBtn.onclick = () => openExamResultsQueue(currentExam);
   }
+
+  const exportBtn = $('#export-exam-csv-btn');
+  if (exportBtn) exportBtn.onclick = () => exportExamSummary(currentExam, allMode);
+  const printSummaryBtn = $('#print-exam-summary-btn');
+  if (printSummaryBtn) printSummaryBtn.onclick = () => printExamSummary(currentExam, allMode);
+}
+
+function getVisibleExams() {
+  return (Array.isArray(STATE.exams) ? STATE.exams : []).filter(exam =>
+    (!examState.subjectFilter || String(exam.subject || '').trim() === examState.subjectFilter) &&
+    (!examState.batchFilter || String(exam.batch || '').trim() === examState.batchFilter)
+  );
 }
 
 function openExamStudentDetails(studentId, exam) {
@@ -458,14 +587,22 @@ function openExamStudentDetails(studentId, exam) {
 }
 
 function getExamMarks(exam) {
-  const marks = { ...((STATE.examMarks && STATE.examMarks[exam.id]) || {}) };
-  if (exam.id === examState.renderedExamId) {
-    $all('.mark-input').forEach(input => {
-      const value = input.value.trim();
-      if (value !== '') marks[input.dataset.studentId] = value;
-    });
-  }
-  return marks;
+  return getAllExamMarks([exam]).get(String(exam.id)) || {};
+}
+
+function getAllExamMarks(exams) {
+  const marksByExam = new Map(exams.map(exam => [
+    String(exam.id),
+    { ...((STATE.examMarks && STATE.examMarks[exam.id]) || {}) }
+  ]));
+  $all('.mark-input').forEach(input => {
+    const marks = marksByExam.get(String(input.dataset.examId));
+    if (!marks) return;
+    const value = input.value.trim();
+    if (value === '') delete marks[input.dataset.studentId];
+    else marks[input.dataset.studentId] = value;
+  });
+  return marksByExam;
 }
 
 function getGradeFromPercentage(percentage) {
@@ -487,11 +624,14 @@ function getStudentExamResult(student, exam, marks = getExamMarks(exam)) {
   return { score, totalPossible: maximum, percentage, grade: getGradeFromPercentage(percentage) };
 }
 
-function getStudentCumulativeResult(student) {
-  const results = STATE.exams
+function getStudentCumulativeResult(student, exams = STATE.exams, marksByExam = null) {
+  const results = exams
     .filter(exam => String(exam.batch) === String(student.batch))
     .map(exam => {
-      const result = getStudentExamResult(student, exam, (STATE.examMarks && STATE.examMarks[exam.id]) || {});
+      const marks = marksByExam
+        ? marksByExam.get(String(exam.id)) || {}
+        : getExamMarks(exam);
+      const result = getStudentExamResult(student, exam, marks);
       return result ? { exam, ...result } : null;
     })
     .filter(Boolean);
@@ -509,18 +649,21 @@ function getStudentCumulativeResult(student) {
   };
 }
 
-function getInstitutionExamAnalysis() {
+function getInstitutionExamAnalysis(marksByExam = null) {
   const evaluations = [];
   STATE.exams.forEach(exam => {
     const students = STATE.students.filter(student => String(student.batch) === String(exam.batch));
-    getEvaluatedStudents(exam, students, (STATE.examMarks && STATE.examMarks[exam.id]) || {})
+    const marks = marksByExam
+      ? marksByExam.get(String(exam.id)) || {}
+      : (STATE.examMarks && STATE.examMarks[exam.id]) || {};
+    getEvaluatedStudents(exam, students, marks)
       .forEach(result => evaluations.push({ ...result, exam }));
   });
   const gradeCounts = { 'A+': 0, A: 0, B: 0, C: 0, D: 0, F: 0 };
   evaluations.forEach(result => { gradeCounts[result.grade] += 1; });
   const passCount = evaluations.filter(result => result.percentage >= 40).length;
   const topScorers = STATE.students
-    .map(student => ({ student, result: getStudentCumulativeResult(student) }))
+    .map(student => ({ student, result: getStudentCumulativeResult(student, STATE.exams, marksByExam) }))
     .filter(item => item.result)
     .sort((a, b) => b.result.percentage - a.result.percentage ||
       b.result.score - a.result.score || String(a.student.studentName).localeCompare(String(b.student.studentName)))
@@ -544,6 +687,7 @@ function getEvaluatedStudents(exam, students, marks = getExamMarks(exam)) {
 }
 
 function updateExamPreview(exam) {
+  if (!exam) return;
   const students = STATE.students.filter(student =>
     student.status === 'Active' && String(student.batch) === String(exam.batch)
   );
@@ -563,10 +707,13 @@ function updateExamPreview(exam) {
   const total = evaluated.reduce((sum, result) => sum + result.score, 0);
   const average = $('#exam-class-average');
   const highest = $('#exam-class-highest');
-  const count = $('#exam-evaluated-count');
+  const passRate = $('#exam-pass-rate');
+  const passCount = $('#exam-pass-count');
   if (average) average.textContent = evaluated.length ? (total / evaluated.length).toFixed(1) : '0';
   if (highest) highest.textContent = evaluated.length ? String(evaluated[0].score) : '0';
-  if (count) count.textContent = String(evaluated.length);
+  const passed = evaluated.filter(result => result.percentage >= 40).length;
+  if (passRate) passRate.textContent = `${evaluated.length ? Math.round(passed / evaluated.length * 100) : 0}%`;
+  if (passCount) passCount.textContent = `${passed} / ${evaluated.length} pass`;
 
   ['A+', 'A', 'B', 'C', 'D', 'F'].forEach(grade => {
     const gradeCount = $(`[data-exam-grade-count="${grade}"]`);
@@ -579,14 +726,81 @@ function updateExamPreview(exam) {
     const student = students.find(item => String(item.studentId) === input.dataset.studentId);
     const result = student && getStudentExamResult(student, exam, marks);
     const percent = row.querySelector('.exam-percentage-value');
+    const grade = row.querySelector('.exam-grade-value');
     const reportButtons = row.querySelectorAll('.print-exam-report-btn, .exam-mobile-report-btn');
     const sendButton = row.querySelector('.send-mark-wa-btn');
     if (percent) {
       percent.textContent = result ? `${result.percentage}%` : '—';
       percent.className = `badge exam-percentage-value ${result ? result.percentage >= 40 ? 'badge-green' : 'badge-red' : 'badge-gray'}`;
     }
+    if (grade) grade.textContent = result ? result.grade : '—';
     reportButtons.forEach(button => { button.disabled = !result; });
     if (sendButton) sendButton.disabled = !result;
+  });
+}
+
+function updateCumulativePreview(changedInput) {
+  const rows = $all('[data-cumulative-student]');
+  const students = rows.map(row => STATE.students.find(student =>
+    String(student.studentId) === String(row.dataset.cumulativeStudent)
+  )).filter(Boolean);
+  const exams = getVisibleExams();
+  const marksByExam = getAllExamMarks(exams);
+  const results = students.map(student => ({
+    student,
+    result: getStudentCumulativeResult(student, exams, marksByExam)
+  }))
+    .filter(item => item.result)
+    .sort((a, b) => b.result.percentage - a.result.percentage || b.result.score - a.result.score ||
+      String(a.student.studentName).localeCompare(String(b.student.studentName)));
+  const ranks = new Map();
+  results.forEach((item, index) => {
+    const previous = results[index - 1];
+    ranks.set(String(item.student.studentId), previous && item.result.percentage === previous.result.percentage
+      ? ranks.get(String(previous.student.studentId))
+      : index + 1);
+  });
+
+  const gradeCounts = { 'A+': 0, A: 0, B: 0, C: 0, D: 0, F: 0 };
+  results.forEach(item => { gradeCounts[item.result.grade] += 1; });
+  const resultByStudent = new Map(results.map(item => [String(item.student.studentId), item.result]));
+  const rowByStudent = new Map(rows.map(row => [String(row.dataset.cumulativeStudent), row]));
+  const studentById = new Map(students.map(student => [String(student.studentId), student]));
+  const examById = new Map(exams.map(exam => [String(exam.id), exam]));
+  students.forEach(student => {
+    const row = rowByStudent.get(String(student.studentId));
+    if (!row) return;
+    const result = resultByStudent.get(String(student.studentId)) || null;
+    row.querySelector('.exam-cumulative-score').textContent = result ? `${result.score} / ${result.totalPossible}` : '—';
+    const percentage = row.querySelector('.exam-cumulative-percentage');
+    percentage.textContent = result ? `${result.percentage}%` : '—';
+    percentage.className = `badge exam-cumulative-percentage ${result ? result.percentage >= 40 ? 'badge-green' : 'badge-red' : 'badge-gray'}`;
+    row.querySelector('.exam-cumulative-grade').textContent = result ? result.grade : '—';
+    row.querySelector('.exam-cumulative-rank').textContent = result ? `#${ranks.get(String(student.studentId))}` : '—';
+    const reportButton = row.querySelector('.print-exam-report-btn, .exam-mobile-report-btn');
+    if (reportButton) reportButton.disabled = !result;
+  });
+  if (changedInput) {
+    const exam = examById.get(String(changedInput.dataset.examId));
+    const student = studentById.get(String(changedInput.dataset.studentId));
+    const result = exam && student
+      ? getStudentExamResult(student, exam, marksByExam.get(String(exam.id)))
+      : null;
+    const resultElement = changedInput.parentElement.querySelector('.exam-cumulative-test-result');
+    if (resultElement) resultElement.textContent = result ? `${result.percentage}% · ${result.grade}` : '—';
+  }
+
+  const average = $('#exam-cumulative-average');
+  const highest = $('#exam-cumulative-highest');
+  const passRate = $('#exam-cumulative-pass-rate');
+  const cumulativeCount = $('#exam-cumulative-count');
+  if (cumulativeCount) cumulativeCount.textContent = String(results.length);
+  if (average) average.textContent = `${results.length ? (results.reduce((sum, item) => sum + item.result.percentage, 0) / results.length).toFixed(1) : '0'}%`;
+  if (highest) highest.textContent = `${results.length ? Math.max(...results.map(item => item.result.percentage)) : 0}%`;
+  if (passRate) passRate.textContent = `${results.length ? Math.round(results.filter(item => item.result.percentage >= 40).length / results.length * 100) : 0}%`;
+  Object.keys(gradeCounts).forEach(grade => {
+    const count = $(`[data-cumulative-grade-count="${grade}"]`);
+    if (count) count.textContent = String(gradeCounts[grade]);
   });
 }
 
@@ -599,6 +813,111 @@ function getStudentExamHistory(student) {
     })
     .filter(Boolean)
     .sort((a, b) => String(b.exam.date || '').localeCompare(String(a.exam.date || '')));
+}
+
+function getExamSummaryData(exam, allMode) {
+  const students = allMode
+    ? STATE.students.filter(student => !examState.batchFilter || String(student.batch || '') === examState.batchFilter)
+    : STATE.students.filter(student => student.status === 'Active' && String(student.batch) === String(exam.batch));
+  const exams = allMode ? getVisibleExams() : exam ? [exam] : [];
+  const marksByExam = getAllExamMarks(exams);
+  const cumulativeById = new Map();
+  const cumulativeRanks = new Map();
+  if (allMode) {
+    const evaluated = students.map(student => ({
+      student,
+      result: getStudentCumulativeResult(student, exams, marksByExam)
+    })).filter(item => item.result)
+      .sort((a, b) => b.result.percentage - a.result.percentage || b.result.score - a.result.score);
+    evaluated.forEach((item, index) => {
+      cumulativeById.set(String(item.student.studentId), item.result);
+      const previous = evaluated[index - 1];
+      cumulativeRanks.set(String(item.student.studentId), previous &&
+        item.result.percentage === previous.result.percentage
+        ? cumulativeRanks.get(String(previous.student.studentId))
+        : index + 1);
+    });
+  }
+  const examResults = !allMode && exam
+    ? getEvaluatedStudents(exam, students, marksByExam.get(String(exam.id)) || {})
+    : [];
+  const examResultsById = new Map(examResults.map(item => [String(item.student.studentId), item]));
+  const columns = allMode
+    ? ['Student ID', 'Student Name', 'Batch', ...exams.map(item => `${getExamDisplayTitle(item)} (${item.totalMarks})`),
+      'Cumulative Score', 'Total Possible', 'Percentage', 'Grade', 'Class Rank']
+    : ['Student ID', 'Student Name', 'Batch', 'Marks', 'Total Possible', 'Percentage', 'Grade', 'Class Rank'];
+  const rows = students.map(student => {
+    if (allMode) {
+      const result = cumulativeById.get(String(student.studentId)) || null;
+      return [
+        student.studentId, student.studentName, student.batch || '',
+        ...exams.map(item => {
+          if (String(item.batch) !== String(student.batch)) return '';
+          const itemResult = getStudentExamResult(student, item, marksByExam.get(String(item.id)) || {});
+          return itemResult ? itemResult.score : '';
+        }),
+        result ? result.score : '',
+        result ? result.totalPossible : '',
+        result ? `${result.percentage}%` : '',
+        result ? result.grade : '',
+        result ? `#${cumulativeRanks.get(String(student.studentId))}` : ''
+      ];
+    }
+    const result = examResultsById.get(String(student.studentId)) || null;
+    const rank = result ? getExamRank(student, examResults) : '';
+    return [
+      student.studentId, student.studentName, student.batch || '',
+      result ? result.score : '', Number(exam.totalMarks),
+      result ? `${result.percentage}%` : '', result ? result.grade : '',
+      rank ? `#${rank}` : ''
+    ];
+  });
+  return { columns, rows, title: allMode ? 'All Tests / Cumulative Summary' : getExamDisplayTitle(exam) };
+}
+
+function getExamRank(student, evaluated) {
+  const target = evaluated.find(item => String(item.student.studentId) === String(student.studentId));
+  if (!target) return 0;
+  return evaluated.findIndex(item => item.score === target.score) + 1;
+}
+
+function exportExamSummary(exam, allMode) {
+  const data = getExamSummaryData(exam, allMode);
+  const csv = [data.columns, ...data.rows].map(row =>
+    row.map(value => {
+      const text = String(value ?? '');
+      const safeText = /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
+      return `"${safeText.replace(/"/g, '""')}"`;
+    }).join(',')
+  ).join('\r\n');
+  const url = URL.createObjectURL(new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${data.title.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase()}-marks.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function printExamSummary(exam, allMode) {
+  const data = getExamSummaryData(exam, allMode);
+  const reportWindow = window.open('', '_blank');
+  if (!reportWindow) {
+    showToast('warning', 'Please allow pop-ups to print the exam summary.');
+    return;
+  }
+  const table = `<table><thead><tr>${data.columns.map(value => `<th>${escapeHtml(value)}</th>`).join('')}</tr></thead><tbody>${
+    data.rows.map(row => `<tr>${row.map(value => `<td>${escapeHtml(value)}</td>`).join('')}</tr>`).join('')
+  }</tbody></table>`;
+  reportWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(data.title)} - Marks Summary</title><style>
+    body{font:12px Arial,sans-serif;color:#111;padding:20px}h1{font-size:20px}table{width:100%;border-collapse:collapse}
+    th,td{border:1px solid #999;padding:6px;text-align:left}th{background:#eee}
+    @media print{body{padding:0}tr{break-inside:avoid}th{print-color-adjust:exact}}
+  </style></head><body><h1>${escapeHtml(data.title)} — Marks Summary</h1>${table}</body></html>`);
+  reportWindow.document.close();
+  reportWindow.focus();
+  reportWindow.print();
 }
 
 function formatExamResultMessage(student, exam, result) {

@@ -1228,6 +1228,19 @@ h5 {
   font-weight: 700;
 }
 
+.exam-cumulative-test-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.exam-cumulative-test-result {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .exam-mark-input-dirty {
   border-color: #334155 !important;
   box-shadow: 0 0 0 2px rgba(51, 65, 85, 0.16);
@@ -3173,5 +3186,230 @@ input:checked+.slider:before {
 @media (max-width: 600px) {
   .open-url-btn {
     font-size: 12px;
+  }
+}
+
+/* Shared small-screen layout and touch targets */
+@media (max-width: 768px) {
+  #page-content {
+    min-width: 0;
+    padding: 16px;
+  }
+
+  .section-head {
+    align-items: flex-start;
+  }
+
+  .section-head > div:last-child {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .toolbar {
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .toolbar .select-filter,
+  .toolbar .search-box {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .toolbar .btn {
+    min-height: 42px;
+    white-space: normal;
+  }
+
+  .btn {
+    min-height: 42px;
+  }
+
+  input,
+  select,
+  textarea {
+    min-height: 42px;
+  }
+
+  .table-wrap {
+    max-width: 100%;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 8px;
+  }
+
+  .modal-box,
+  .modal-box.wide {
+    max-width: none;
+    max-height: calc(100vh - 16px);
+    max-height: calc(100dvh - 16px);
+    border-radius: var(--radius-lg);
+  }
+
+  .modal-header {
+    padding: 14px 16px;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .modal-footer {
+    flex-wrap: wrap;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .modal-footer .btn {
+    min-height: 42px;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    scroll-margin-bottom: 20px;
+  }
+
+  .exam-cumulative-table {
+    overflow-x: auto;
+  }
+
+  .exam-cumulative-table table {
+    width: max-content;
+    min-width: 100%;
+    table-layout: auto;
+  }
+
+  .exam-cumulative-table .exam-all-test-column {
+    min-width: 160px;
+  }
+
+}
+
+@media (max-width: 767px) {
+  .exam-marks-table:not(.exam-cumulative-table) {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .exam-marks-table:not(.exam-cumulative-table) table,
+  .exam-marks-table:not(.exam-cumulative-table) tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .exam-marks-table:not(.exam-cumulative-table) thead {
+    display: none;
+  }
+
+  .exam-marks-table:not(.exam-cumulative-table) tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 12px;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--card);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .exam-marks-table:not(.exam-cumulative-table) tr:hover td {
+    background: transparent;
+  }
+
+  .exam-marks-table:not(.exam-cumulative-table) td,
+  .exam-marks-table:not(.exam-cumulative-table) .exam-col-id,
+  .exam-marks-table:not(.exam-cumulative-table) .exam-col-batch,
+  .exam-marks-table:not(.exam-cumulative-table) .exam-col-rank,
+  .exam-marks-table:not(.exam-cumulative-table) .exam-col-marks,
+  .exam-marks-table:not(.exam-cumulative-table) .exam-col-percentage,
+  .exam-marks-table:not(.exam-cumulative-table) .exam-col-grade,
+  .exam-marks-table:not(.exam-cumulative-table) .exam-col-actions {
+    display: flex;
+    width: auto;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    overflow-wrap: anywhere;
+  }
+
+  .exam-marks-table:not(.exam-cumulative-table) td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .exam-marks-table:not(.exam-cumulative-table) .exam-col-name,
+  .exam-marks-table:not(.exam-cumulative-table) .exam-col-actions {
+    grid-column: 1 / -1;
+  }
+
+  .exam-marks-table:not(.exam-cumulative-table) .exam-col-name {
+    display: block;
+    padding-top: 4px;
+  }
+
+  .exam-marks-table:not(.exam-cumulative-table) .exam-col-name::before {
+    display: none;
+  }
+
+  .exam-marks-table:not(.exam-cumulative-table) .exam-col-actions {
+    border-bottom: 0;
+    justify-content: flex-start;
+  }
+
+  .exam-marks-table:not(.exam-cumulative-table) .exam-row-actions {
+    justify-content: flex-start;
+  }
+
+  .exam-marks-table:not(.exam-cumulative-table) .exam-mobile-report-btn {
+    display: none;
+  }
+
+  .exam-marks-table:not(.exam-cumulative-table) .mark-input {
+    width: 110px !important;
+    min-height: 42px;
+    text-align: right;
+  }
+}
+
+@media (max-width: 480px) {
+  #page-content {
+    padding: 12px;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .modal-overlay {
+    padding: 0;
+  }
+
+  .modal-box,
+  .modal-box.wide {
+    max-height: 94vh;
+    max-height: 94dvh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .exam-marks-table:not(.exam-cumulative-table) tr {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .exam-marks-table:not(.exam-cumulative-table) .exam-col-name,
+  .exam-marks-table:not(.exam-cumulative-table) .exam-col-actions {
+    grid-column: 1;
   }
 }

@@ -141,6 +141,8 @@ function dispatchAction(action, payload) {
       return saveAttendance(payload);
     case 'saveexam':
       return saveExam(payload.exam || payload);
+    case 'deleteexam':
+      return deleteExamRecord(payload.examId || payload.id);
     case 'savemarks':
       return saveExamMarks(payload);
     case 'savenotice':
@@ -405,6 +407,37 @@ function saveAttendance(payload) {
 
 function saveExam(exam) {
   return upsertRecord_('exams', exam, ['id']);
+}
+
+function deleteExamRecord(id) {
+  var examId = String(id || '').trim();
+  if (!examId) throw new Error('examId is required.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var deletedExams = deleteRowsByValue_('exams', 'id', examId);
+    var deletedMarks = deleteRowsByValue_('examMarks', 'examId', examId);
+    return { success: true, examId: examId, deletedExams: deletedExams, deletedMarks: deletedMarks };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function deleteRowsByValue_(type, field, target) {
+  var sheet = getSheet_(type, false);
+  if (!sheet || sheet.getLastRow() < 2) return 0;
+  var headers = ensureHeaders_(sheet, SHEET_CONFIG[type].headers);
+  var fieldIndex = findHeaderColumn_(headers, field);
+  if (fieldIndex < 0) return 0;
+  var column = fieldIndex + 1;
+  var deleted = 0;
+  for (var row = sheet.getLastRow(); row >= 2; row--) {
+    if (String(sheet.getRange(row, column).getValue()).trim() === target) {
+      sheet.deleteRow(row);
+      deleted++;
+    }
+  }
+  return deleted;
 }
 
 function saveExamMarks(payload) {
